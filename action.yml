@@ -1,0 +1,34 @@
+name: 'Enforce Commit Status'
+description: 'Synchronous gatekeeper action; suspends build runner pending definitive test resolution.'
+author: 'VitaliiLazebnyi'
+
+inputs:
+  workflow-id:
+    description: 'Filename or ID of the Tests workflow.'
+    required: true
+  commit-sha:
+    description: 'Target Commit SHA.'
+    required: false
+    default: '${{ github.sha }}'
+  github-token:
+    description: 'Authentication token for Actions API.'
+    required: false
+    default: '${{ github.token }}'
+  poll-interval:
+    description: 'Polling frequency. Accepts duration strings (e.g., 10s, 1m). Minimum: 10s.'
+    required: false
+    default: '15s'
+  timeout:
+    description: 'Maximum suspension duration. Accepts duration strings (e.g., 45m, 2h).'
+    required: false
+    default: '1h'
+
+outputs:
+  final-status:
+    description: 'Resolved conclusion (success, failure, timeout).'
+  run-url:
+    description: 'HTML URL of matched test run.'
+
+runs:
+  using: 'node24'
+  main: 'dist/index.js'

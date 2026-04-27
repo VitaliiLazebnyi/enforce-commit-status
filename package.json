@@ -9,7 +9,8 @@
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.ts\"",
-    "format:check": "prettier --check \"**/*.ts\""
+    "format:check": "prettier --check \"**/*.ts\"",
+    "prepare": "husky"
   },
   "keywords": [
     "actions",
@@ -32,6 +33,7 @@
     "@typescript-eslint/parser": "^8.59.0",
     "@vercel/ncc": "^0.38.4",
     "eslint": "^10.2.1",
+    "husky": "^9.1.7",
     "jest": "^30.3.0",
     "prettier": "^3.8.3",
     "ts-jest": "^29.4.9",

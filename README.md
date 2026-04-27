@@ -59,7 +59,7 @@ jobs:
           fetch-depth: 0 # Required if resolving annotated tags
 
       - name: Await PR Tests Completion
-        uses: your-org/enforce-commit-status@v1
+        uses: VitaliiLazebnyi/enforce-commit-status@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           workflow-id: 'tests.yml'   # The filename of your test workflow

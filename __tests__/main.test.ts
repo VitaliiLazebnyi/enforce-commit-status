@@ -1,15 +1,15 @@
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 
 jest.unstable_mockModule('@actions/core', () => ({
-  getInput: jest.fn<any>(),
-  setOutput: jest.fn<any>(),
-  setFailed: jest.fn<any>(),
-  info: jest.fn<any>(),
-  warning: jest.fn<any>()
+  getInput: jest.fn(),
+  setOutput: jest.fn(),
+  setFailed: jest.fn(),
+  info: jest.fn(),
+  warning: jest.fn()
 }));
 
 jest.unstable_mockModule('@actions/github', () => ({
-  getOctokit: jest.fn<any>(),
+  getOctokit: jest.fn(),
   context: {
     repo: {
       owner: 'mock-owner',
@@ -117,8 +117,8 @@ describe('Enforce Commit Status Action', () => {
 
     describe('State Evaluation Matrix & Polling', () => {
       let now = 100000;
-      let dateSpy: ReturnType<typeof jest.spyOn>;
-      let sleepSpy: ReturnType<typeof jest.spyOn>;
+      let dateSpy: { mockRestore: () => void; mockImplementation: (fn: () => number) => void };
+      let sleepSpy: { mockRestore: () => void; mockResolvedValue: (val?: void) => void };
 
       beforeEach(() => {
         now = 100000;

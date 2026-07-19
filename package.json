@@ -1,24 +1,41 @@
 {
   "name": "enforce-commit-status",
   "version": "1.0.0",
+  "private": true,
   "description": "Synchronous gatekeeper action; suspends build runner pending definitive test resolution.",
   "type": "module",
-  "main": "dist/index.js",
   "scripts": {
-    "build": "ncc build src/main.ts -o dist --source-map --license licenses.txt",
+    "build": "rm -rf dist && ncc build src/main.ts -o dist --source-map --license licenses.txt",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "lint": "eslint .",
-    "format": "prettier --write \"**/*.ts\"",
-    "format:check": "prettier --check \"**/*.ts\"",
-    "prepare": "husky"
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky || true"
   },
   "keywords": [
     "actions",
     "github",
+    "github-actions",
+    "workflow",
+    "ci",
+    "gatekeeper",
+    "commit-status",
     "status"
   ],
-  "author": "",
+  "author": "Vitalii Lazebnyi",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VitaliiLazebnyi/enforce-commit-status.git"
+  },
+  "homepage": "https://github.com/VitaliiLazebnyi/enforce-commit-status#readme",
+  "bugs": {
+    "url": "https://github.com/VitaliiLazebnyi/enforce-commit-status/issues"
+  },
+  "engines": {
+    "node": ">=24"
+  },
   "dependencies": {
     "@actions/core": "^3.0.1",
     "@actions/github": "^9.1.1",
@@ -28,11 +45,10 @@
     "@eslint/js": "^10.0.1",
     "@types/jest": "^30.0.0",
     "@types/ms": "^2.1.0",
-    "@types/node": "^25.6.0",
-    "@typescript-eslint/eslint-plugin": "^8.59.0",
-    "@typescript-eslint/parser": "^8.59.0",
-    "@vercel/ncc": "^0.38.4",
+    "@types/node": "^24.0.0",
+    "@vercel/ncc": "^0.44.1",
     "eslint": "^10.2.1",
+    "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
     "jest": "^30.3.0",
     "prettier": "^3.8.3",

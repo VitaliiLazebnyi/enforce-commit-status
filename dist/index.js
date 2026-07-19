@@ -5387,7 +5387,6 @@ function defaultFactory (origin, opts) {
 
 class Agent extends DispatcherBase {
   constructor ({ factory = defaultFactory, maxRedirections = 0, connect, ...options } = {}) {
-
     if (typeof factory !== 'function') {
       throw new InvalidArgumentError('factory must be a function.')
     }
@@ -5773,6 +5772,9 @@ const EMPTY_BUF = Buffer.alloc(0)
 const FastBuffer = Buffer[Symbol.species]
 const addListener = util.addListener
 const removeAllListeners = util.removeAllListeners
+const kIdleSocketValidation = Symbol('kIdleSocketValidation')
+const kIdleSocketValidationTimeout = Symbol('kIdleSocketValidationTimeout')
+const kSocketUsed = Symbol('kSocketUsed')
 
 let extractBody
 
@@ -5995,27 +5997,69 @@ class Parser {
 
       const offset = llhttp.llhttp_get_error_pos(this.ptr) - currentBufferPtr
 
-      if (ret === constants.ERROR.PAUSED_UPGRADE) {
-        this.onUpgrade(data.slice(offset))
-      } else if (ret === constants.ERROR.PAUSED) {
-        this.paused = true
-        socket.unshift(data.slice(offset))
-      } else if (ret !== constants.ERROR.OK) {
-        const ptr = llhttp.llhttp_get_error_reason(this.ptr)
-        let message = ''
-        /* istanbul ignore else: difficult to make a test case for */
-        if (ptr) {
-          const len = new Uint8Array(llhttp.memory.buffer, ptr).indexOf(0)
-          message =
-            'Response does not match the HTTP/1.1 protocol (' +
-            Buffer.from(llhttp.memory.buffer, ptr, len).toString() +
-            ')'
+      if (ret !== constants.ERROR.OK) {
+        const body = data.subarray(offset)
+
+        if (ret === constants.ERROR.PAUSED_UPGRADE) {
+          this.onUpgrade(body)
+        } else if (ret === constants.ERROR.PAUSED) {
+          this.paused = true
+          socket.unshift(body)
+        } else {
+          throw this.createError(ret, body)
         }
-        throw new HTTPParserError(message, constants.ERROR[ret], data.slice(offset))
       }
     } catch (err) {
       util.destroy(socket, err)
     }
+  }
+
+  finish () {
+    assert(currentParser === null)
+    assert(this.ptr != null)
+    assert(!this.paused)
+
+    const { llhttp } = this
+
+    let ret
+
+    try {
+      currentParser = this
+      ret = llhttp.llhttp_finish(this.ptr)
+    } finally {
+      currentParser = null
+    }
+
+    if (ret === constants.ERROR.OK) {
+      return null
+    }
+
+    if (ret === constants.ERROR.PAUSED || ret === constants.ERROR.PAUSED_UPGRADE) {
+      this.paused = true
+      return null
+    }
+
+    return this.createError(ret, EMPTY_BUF)
+  }
+
+  createError (ret, data) {
+    const { llhttp, contentLength, bytesRead } = this
+
+    if (contentLength && bytesRead !== parseInt(contentLength, 10)) {
+      return new ResponseContentLengthMismatchError()
+    }
+
+    const ptr = llhttp.llhttp_get_error_reason(this.ptr)
+    let message = ''
+    if (ptr) {
+      const len = new Uint8Array(llhttp.memory.buffer, ptr).indexOf(0)
+      message =
+        'Response does not match the HTTP/1.1 protocol (' +
+        Buffer.from(llhttp.memory.buffer, ptr, len).toString() +
+        ')'
+    }
+
+    return new HTTPParserError(message, constants.ERROR[ret], data)
   }
 
   destroy () {
@@ -6042,6 +6086,11 @@ class Parser {
 
     /* istanbul ignore next: difficult to make a test case for */
     if (socket.destroyed) {
+      return -1
+    }
+
+    if (client[kRunning] === 0) {
+      util.destroy(socket, new SocketError('bad response', util.getSocketInfo(socket)))
       return -1
     }
 
@@ -6145,6 +6194,11 @@ class Parser {
 
     /* istanbul ignore next: difficult to make a test case for */
     if (socket.destroyed) {
+      return -1
+    }
+
+    if (client[kRunning] === 0) {
+      util.destroy(socket, new SocketError('bad response', util.getSocketInfo(socket)))
       return -1
     }
 
@@ -6321,6 +6375,7 @@ class Parser {
     request.onComplete(headers)
 
     client[kQueue][client[kRunningIdx]++] = null
+    socket[kSocketUsed] = true
 
     if (socket[kWriting]) {
       assert(client[kRunning] === 0)
@@ -6379,6 +6434,9 @@ async function connectH1 (client, socket) {
   socket[kWriting] = false
   socket[kReset] = false
   socket[kBlocking] = false
+  socket[kIdleSocketValidation] = 0
+  socket[kIdleSocketValidationTimeout] = null
+  socket[kSocketUsed] = false
   socket[kParser] = new Parser(client, socket, llhttpInstance)
 
   addListener(socket, 'error', function (err) {
@@ -6389,8 +6447,11 @@ async function connectH1 (client, socket) {
     // On Mac OS, we get an ECONNRESET even if there is a full body to be forwarded
     // to the user.
     if (err.code === 'ECONNRESET' && parser.statusCode && !parser.shouldKeepAlive) {
-      // We treat all incoming data so for as a valid response.
-      parser.onMessageComplete()
+      const parserErr = parser.finish()
+      if (parserErr) {
+        this[kError] = parserErr
+        this[kClient][kOnError](parserErr)
+      }
       return
     }
 
@@ -6409,8 +6470,10 @@ async function connectH1 (client, socket) {
     const parser = this[kParser]
 
     if (parser.statusCode && !parser.shouldKeepAlive) {
-      // We treat all incoming data so far as a valid response.
-      parser.onMessageComplete()
+      const parserErr = parser.finish()
+      if (parserErr) {
+        util.destroy(this, parserErr)
+      }
       return
     }
 
@@ -6420,10 +6483,11 @@ async function connectH1 (client, socket) {
     const client = this[kClient]
     const parser = this[kParser]
 
+    clearIdleSocketValidation(this)
+
     if (parser) {
       if (!this[kError] && parser.statusCode && !parser.shouldKeepAlive) {
-        // We treat all incoming data so far as a valid response.
-        parser.onMessageComplete()
+        this[kError] = parser.finish() || this[kError]
       }
 
       this[kParser].destroy()
@@ -6486,7 +6550,7 @@ async function connectH1 (client, socket) {
       return socket.destroyed
     },
     busy (request) {
-      if (socket[kWriting] || socket[kReset] || socket[kBlocking]) {
+      if (socket[kWriting] || socket[kReset] || socket[kBlocking] || socket[kIdleSocketValidation] === 1) {
         return true
       }
 
@@ -6524,6 +6588,31 @@ async function connectH1 (client, socket) {
   }
 }
 
+function clearIdleSocketValidation (socket) {
+  if (socket[kIdleSocketValidationTimeout]) {
+    clearTimeout(socket[kIdleSocketValidationTimeout])
+    socket[kIdleSocketValidationTimeout] = null
+  }
+
+  socket[kIdleSocketValidation] = 0
+}
+
+function scheduleIdleSocketValidation (client, socket) {
+  socket[kIdleSocketValidation] = 1
+  socket[kIdleSocketValidationTimeout] = setTimeout(() => {
+    socket[kIdleSocketValidationTimeout] = null
+    socket[kIdleSocketValidation] = 2
+
+    if (client[kSocket] === socket && !socket.destroyed) {
+      client[kResume]()
+    }
+  }, 0)
+  socket[kIdleSocketValidationTimeout].unref?.()
+}
+
+/**
+ * @param {import('./client.js')} client
+ */
 function resumeH1 (client) {
   const socket = client[kSocket]
 
@@ -6536,6 +6625,32 @@ function resumeH1 (client) {
     } else if (socket[kNoRef] && socket.ref) {
       socket.ref()
       socket[kNoRef] = false
+    }
+
+    if (client[kRunning] === 0 && client[kPending] > 0 && socket[kSocketUsed]) {
+      if (socket[kIdleSocketValidation] === 0) {
+        scheduleIdleSocketValidation(client, socket)
+        socket[kParser].readMore()
+        if (socket.destroyed) {
+          return
+        }
+        return
+      }
+
+      if (socket[kIdleSocketValidation] === 1) {
+        socket[kParser].readMore()
+        if (socket.destroyed) {
+          return
+        }
+        return
+      }
+    }
+
+    if (client[kRunning] === 0) {
+      socket[kParser].readMore()
+      if (socket.destroyed) {
+        return
+      }
     }
 
     if (client[kSize] === 0) {
@@ -6631,6 +6746,7 @@ function writeH1 (client, request) {
   }
 
   const socket = client[kSocket]
+  clearIdleSocketValidation(socket)
 
   const abort = (err) => {
     if (request.aborted || request.completed) {
@@ -8500,6 +8616,7 @@ class DispatcherBase extends Dispatcher {
 
   get webSocketOptions () {
     return {
+      maxFragments: this[kWebSocketOptions].maxFragments ?? 131072,
       maxPayloadSize: this[kWebSocketOptions].maxPayloadSize ?? 128 * 1024 * 1024
     }
   }
@@ -14399,32 +14516,25 @@ function parseUnparsedAttributes (unparsedAttributes, cookieAttributeList = {}) 
     // If the attribute-name case-insensitively matches the string
     // "SameSite", the user agent MUST process the cookie-av as follows:
 
-    // 1. Let enforcement be "Default".
-    let enforcement = 'Default'
-
     const attributeValueLowercase = attributeValue.toLowerCase()
-    // 2. If cookie-av's attribute-value is a case-insensitive match for
-    //    "None", set enforcement to "None".
-    if (attributeValueLowercase.includes('none')) {
-      enforcement = 'None'
-    }
 
-    // 3. If cookie-av's attribute-value is a case-insensitive match for
-    //    "Strict", set enforcement to "Strict".
-    if (attributeValueLowercase.includes('strict')) {
-      enforcement = 'Strict'
+    // 1. If cookie-av's attribute-value is a case-insensitive match for
+    //    "None", append an attribute to the cookie-attribute-list with an
+    //    attribute-name of "SameSite" and an attribute-value of "None".
+    if (attributeValueLowercase === 'none') {
+      cookieAttributeList.sameSite = 'None'
+    } else if (attributeValueLowercase === 'strict') {
+      // 2. If cookie-av's attribute-value is a case-insensitive match for
+      //    "Strict", append an attribute to the cookie-attribute-list with
+      //    an attribute-name of "SameSite" and an attribute-value of
+      //    "Strict".
+      cookieAttributeList.sameSite = 'Strict'
+    } else if (attributeValueLowercase === 'lax') {
+      // 3. If cookie-av's attribute-value is a case-insensitive match for
+      //    "Lax", append an attribute to the cookie-attribute-list with an
+      //    attribute-name of "SameSite" and an attribute-value of "Lax".
+      cookieAttributeList.sameSite = 'Lax'
     }
-
-    // 4. If cookie-av's attribute-value is a case-insensitive match for
-    //    "Lax", set enforcement to "Lax".
-    if (attributeValueLowercase.includes('lax')) {
-      enforcement = 'Lax'
-    }
-
-    // 5. Append an attribute to the cookie-attribute-list with an
-    //    attribute-name of "SameSite" and an attribute-value of
-    //    enforcement.
-    cookieAttributeList.sameSite = enforcement
   } else {
     cookieAttributeList.unparsed ??= []
 
@@ -27220,6 +27330,11 @@ const { closeWebSocketConnection } = __nccwpck_require__(6897)
 const { PerMessageDeflate } = __nccwpck_require__(9469)
 const { MessageSizeExceededError } = __nccwpck_require__(8707)
 
+function failWebsocketConnectionWithCode (ws, code, reason) {
+  closeWebSocketConnection(ws, code, reason, Buffer.byteLength(reason))
+  failWebsocketConnection(ws, reason)
+}
+
 // This code was influenced by ws released under the MIT license.
 // Copyright (c) 2011 Einar Otto Stangvik <einaros@gmail.com>
 // Copyright (c) 2013 Arnout Kazemier and contributors
@@ -27240,18 +27355,22 @@ class ByteParser extends Writable {
   #extensions
 
   /** @type {number} */
+  #maxFragments
+
+  /** @type {number} */
   #maxPayloadSize
 
   /**
    * @param {import('./websocket').WebSocket} ws
    * @param {Map<string, string>|null} extensions
-   * @param {{ maxPayloadSize?: number }} [options]
+   * @param {{ maxFragments?: number, maxPayloadSize?: number }} [options]
    */
   constructor (ws, extensions, options = {}) {
     super()
 
     this.ws = ws
     this.#extensions = extensions == null ? new Map() : extensions
+    this.#maxFragments = options.maxFragments ?? 0
     this.#maxPayloadSize = options.maxPayloadSize ?? 0
 
     if (this.#extensions.has('permessage-deflate')) {
@@ -27275,9 +27394,9 @@ class ByteParser extends Writable {
     if (
       this.#maxPayloadSize > 0 &&
       !isControlFrame(this.#info.opcode) &&
-      this.#info.payloadLength > this.#maxPayloadSize
+      this.#info.payloadLength + this.#fragmentsBytes > this.#maxPayloadSize
     ) {
-      failWebsocketConnection(this.ws, 'Payload size exceeds maximum allowed size')
+      failWebsocketConnectionWithCode(this.ws, 1009, 'Payload size exceeds maximum allowed size')
       return false
     }
 
@@ -27442,10 +27561,12 @@ class ByteParser extends Writable {
           this.#state = parserStates.INFO
         } else {
           if (!this.#info.compressed) {
-            this.writeFragments(body)
+            if (!this.writeFragments(body)) {
+              return
+            }
 
             if (this.#maxPayloadSize > 0 && this.#fragmentsBytes > this.#maxPayloadSize) {
-              failWebsocketConnection(this.ws, new MessageSizeExceededError().message)
+              failWebsocketConnectionWithCode(this.ws, 1009, new MessageSizeExceededError().message)
               return
             }
 
@@ -27464,14 +27585,17 @@ class ByteParser extends Writable {
               this.#info.fin,
               (error, data) => {
                 if (error) {
-                  failWebsocketConnection(this.ws, error.message)
+                  const code = error instanceof MessageSizeExceededError ? 1009 : 1007
+                  failWebsocketConnectionWithCode(this.ws, code, error.message)
                   return
                 }
 
-                this.writeFragments(data)
+                if (!this.writeFragments(data)) {
+                  return
+                }
 
                 if (this.#maxPayloadSize > 0 && this.#fragmentsBytes > this.#maxPayloadSize) {
-                  failWebsocketConnection(this.ws, new MessageSizeExceededError().message)
+                  failWebsocketConnectionWithCode(this.ws, 1009, new MessageSizeExceededError().message)
                   return
                 }
 
@@ -27541,8 +27665,17 @@ class ByteParser extends Writable {
   }
 
   writeFragments (fragment) {
+    if (
+      this.#maxFragments > 0 &&
+      this.#fragments.length === this.#maxFragments
+    ) {
+      failWebsocketConnectionWithCode(this.ws, 1008, 'Too many message fragments')
+      return false
+    }
+
     this.#fragmentsBytes += fragment.length
     this.#fragments.push(fragment)
+    return true
   }
 
   consumeFragments () {
@@ -28591,9 +28724,12 @@ class WebSocket extends EventTarget {
     // once this happens, the connection is open
     this[kResponse] = response
 
-    const maxPayloadSize = this[kController]?.dispatcher?.webSocketOptions?.maxPayloadSize
+    const webSocketOptions = this[kController]?.dispatcher?.webSocketOptions
+    const maxFragments = webSocketOptions?.maxFragments
+    const maxPayloadSize = webSocketOptions?.maxPayloadSize
 
     const parser = new ByteParser(this, parsedExtensions, {
+      maxFragments,
       maxPayloadSize
     })
     parser.on('drain', onParserDrain)
@@ -28750,9 +28886,447 @@ module.exports = {
 
 /***/ }),
 
-/***/ 1364:
-/***/ ((module, __unused_webpack___webpack_exports__, __nccwpck_require__) => {
+/***/ 2613:
+/***/ ((module) => {
 
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("assert");
+
+/***/ }),
+
+/***/ 4434:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("events");
+
+/***/ }),
+
+/***/ 8611:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("http");
+
+/***/ }),
+
+/***/ 5692:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("https");
+
+/***/ }),
+
+/***/ 9278:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("net");
+
+/***/ }),
+
+/***/ 4589:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:assert");
+
+/***/ }),
+
+/***/ 6698:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:async_hooks");
+
+/***/ }),
+
+/***/ 4573:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:buffer");
+
+/***/ }),
+
+/***/ 7540:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:console");
+
+/***/ }),
+
+/***/ 7598:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:crypto");
+
+/***/ }),
+
+/***/ 3053:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:diagnostics_channel");
+
+/***/ }),
+
+/***/ 610:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:dns");
+
+/***/ }),
+
+/***/ 8474:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:events");
+
+/***/ }),
+
+/***/ 7067:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:http");
+
+/***/ }),
+
+/***/ 2467:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:http2");
+
+/***/ }),
+
+/***/ 7030:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:net");
+
+/***/ }),
+
+/***/ 643:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:perf_hooks");
+
+/***/ }),
+
+/***/ 1792:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:querystring");
+
+/***/ }),
+
+/***/ 7075:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:stream");
+
+/***/ }),
+
+/***/ 1692:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:tls");
+
+/***/ }),
+
+/***/ 3136:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:url");
+
+/***/ }),
+
+/***/ 7975:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:util");
+
+/***/ }),
+
+/***/ 3429:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:util/types");
+
+/***/ }),
+
+/***/ 5919:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:worker_threads");
+
+/***/ }),
+
+/***/ 8522:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:zlib");
+
+/***/ }),
+
+/***/ 3193:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("string_decoder");
+
+/***/ }),
+
+/***/ 4756:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("tls");
+
+/***/ }),
+
+/***/ 9023:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("util");
+
+/***/ }),
+
+/***/ 1120:
+/***/ ((module) => {
+
+var __webpack_unused_export__;
+
+
+const NullObject = function NullObject () { }
+NullObject.prototype = Object.create(null)
+
+/**
+ * RegExp to match *( ";" parameter ) in RFC 7231 sec 3.1.1.1
+ *
+ * parameter     = token "=" ( token / quoted-string )
+ * token         = 1*tchar
+ * tchar         = "!" / "#" / "$" / "%" / "&" / "'" / "*"
+ *               / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
+ *               / DIGIT / ALPHA
+ *               ; any VCHAR, except delimiters
+ * quoted-string = DQUOTE *( qdtext / quoted-pair ) DQUOTE
+ * qdtext        = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
+ * obs-text      = %x80-FF
+ * quoted-pair   = "\" ( HTAB / SP / VCHAR / obs-text )
+ */
+const paramRE = /; *([!#$%&'*+.^\w`|~-]+)=("(?:[\v\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u00ff]|\\[\v\u0020-\u00ff])*"|[!#$%&'*+.^\w`|~-]+) */gu
+
+/**
+ * RegExp to match quoted-pair in RFC 7230 sec 3.2.6
+ *
+ * quoted-pair = "\" ( HTAB / SP / VCHAR / obs-text )
+ * obs-text    = %x80-FF
+ */
+const quotedPairRE = /\\([\v\u0020-\u00ff])/gu
+
+/**
+ * RegExp to match type in RFC 7231 sec 3.1.1.1
+ *
+ * media-type = type "/" subtype
+ * type       = token
+ * subtype    = token
+ */
+const mediaTypeRE = /^[!#$%&'*+.^\w|~-]+\/[!#$%&'*+.^\w|~-]+$/u
+
+// default ContentType to prevent repeated object creation
+const defaultContentType = { type: '', parameters: new NullObject() }
+Object.freeze(defaultContentType.parameters)
+Object.freeze(defaultContentType)
+
+/**
+ * Parse media type to object.
+ *
+ * @param {string|object} header
+ * @return {Object}
+ * @public
+ */
+
+function parse (header) {
+  if (typeof header !== 'string') {
+    throw new TypeError('argument header is required and must be a string')
+  }
+
+  let index = header.indexOf(';')
+  const type = index !== -1
+    ? header.slice(0, index).trim()
+    : header.trim()
+
+  if (mediaTypeRE.test(type) === false) {
+    throw new TypeError('invalid media type')
+  }
+
+  const result = {
+    type: type.toLowerCase(),
+    parameters: new NullObject()
+  }
+
+  // parse parameters
+  if (index === -1) {
+    return result
+  }
+
+  let key
+  let match
+  let value
+
+  paramRE.lastIndex = index
+
+  while ((match = paramRE.exec(header))) {
+    if (match.index !== index) {
+      throw new TypeError('invalid parameter format')
+    }
+
+    index += match[0].length
+    key = match[1].toLowerCase()
+    value = match[2]
+
+    if (value[0] === '"') {
+      // remove quotes and escapes
+      value = value
+        .slice(1, value.length - 1)
+
+      quotedPairRE.test(value) && (value = value.replace(quotedPairRE, '$1'))
+    }
+
+    result.parameters[key] = value
+  }
+
+  if (index !== header.length) {
+    throw new TypeError('invalid parameter format')
+  }
+
+  return result
+}
+
+function safeParse (header) {
+  if (typeof header !== 'string') {
+    return defaultContentType
+  }
+
+  let index = header.indexOf(';')
+  const type = index !== -1
+    ? header.slice(0, index).trim()
+    : header.trim()
+
+  if (mediaTypeRE.test(type) === false) {
+    return defaultContentType
+  }
+
+  const result = {
+    type: type.toLowerCase(),
+    parameters: new NullObject()
+  }
+
+  // parse parameters
+  if (index === -1) {
+    return result
+  }
+
+  let key
+  let match
+  let value
+
+  paramRE.lastIndex = index
+
+  while ((match = paramRE.exec(header))) {
+    if (match.index !== index) {
+      return defaultContentType
+    }
+
+    index += match[0].length
+    key = match[1].toLowerCase()
+    value = match[2]
+
+    if (value[0] === '"') {
+      // remove quotes and escapes
+      value = value
+        .slice(1, value.length - 1)
+
+      quotedPairRE.test(value) && (value = value.replace(quotedPairRE, '$1'))
+    }
+
+    result.parameters[key] = value
+  }
+
+  if (index !== header.length) {
+    return defaultContentType
+  }
+
+  return result
+}
+
+__webpack_unused_export__ = { parse, safeParse }
+__webpack_unused_export__ = parse
+module.exports.xL = safeParse
+__webpack_unused_export__ = defaultContentType
+
+
+/***/ })
+
+/******/ });
+/************************************************************************/
+/******/ // The module cache
+/******/ var __webpack_module_cache__ = {};
+/******/ 
+/******/ // The require function
+/******/ function __nccwpck_require__(moduleId) {
+/******/ 	// Check if module is in cache
+/******/ 	var cachedModule = __webpack_module_cache__[moduleId];
+/******/ 	if (cachedModule !== undefined) {
+/******/ 		return cachedModule.exports;
+/******/ 	}
+/******/ 	// Create a new module (and put it into the cache)
+/******/ 	var module = __webpack_module_cache__[moduleId] = {
+/******/ 		// no module.id needed
+/******/ 		// no module.loaded needed
+/******/ 		exports: {}
+/******/ 	};
+/******/ 
+/******/ 	// Execute the module function
+/******/ 	var threw = true;
+/******/ 	try {
+/******/ 		__webpack_modules__[moduleId].call(module.exports, module, module.exports, __nccwpck_require__);
+/******/ 		threw = false;
+/******/ 	} finally {
+/******/ 		if(threw) delete __webpack_module_cache__[moduleId];
+/******/ 	}
+/******/ 
+/******/ 	// Return the exports of the module
+/******/ 	return module.exports;
+/******/ }
+/******/ 
+/************************************************************************/
+/******/ /* webpack/runtime/compat get default export */
+/******/ (() => {
+/******/ 	// getDefaultExport function for compatibility with non-harmony modules
+/******/ 	__nccwpck_require__.n = (module) => {
+/******/ 		var getter = module && module.__esModule ?
+/******/ 			() => (module['default']) :
+/******/ 			() => (module);
+/******/ 		__nccwpck_require__.d(getter, { a: getter });
+/******/ 		return getter;
+/******/ 	};
+/******/ })();
+/******/ 
+/******/ /* webpack/runtime/define property getters */
+/******/ (() => {
+/******/ 	// define getter functions for harmony exports
+/******/ 	__nccwpck_require__.d = (exports, definition) => {
+/******/ 		for(var key in definition) {
+/******/ 			if(__nccwpck_require__.o(definition, key) && !__nccwpck_require__.o(exports, key)) {
+/******/ 				Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 			}
+/******/ 		}
+/******/ 	};
+/******/ })();
+/******/ 
+/******/ /* webpack/runtime/hasOwnProperty shorthand */
+/******/ (() => {
+/******/ 	__nccwpck_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
+/******/ })();
+/******/ 
+/******/ /* webpack/runtime/compat */
+/******/ 
+/******/ if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = new URL('.', import.meta.url).pathname.slice(import.meta.url.match(/^file:\/\/\/\w:/) ? 1 : 0, -1) + "/";
+/******/ 
+/************************************************************************/
+var __webpack_exports__ = {};
 
 ;// CONCATENATED MODULE: external "os"
 const external_os_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("os");
@@ -31459,7 +32033,7 @@ function exportVariable(name, val) {
  * ```
  */
 function core_setSecret(secret) {
-    issueCommand('add-mask', {}, secret);
+    command_issueCommand('add-mask', {}, secret);
 }
 /**
  * Prepends inputPath to the PATH (for this action and future actions)
@@ -36020,47 +36594,132 @@ var ms = __nccwpck_require__(744);
 var ms_default = /*#__PURE__*/__nccwpck_require__.n(ms);
 ;// CONCATENATED MODULE: ./src/utils.ts
 
+// Node's setTimeout rejects delays above 2^31 - 1 ms (~24.8 days) and fires
+// after 1 ms instead, so durations must never exceed this bound.
+const MAX_DURATION_MS = 2147483647;
+// Safety cap for annotated tags pointing at other annotated tags.
+const MAX_TAG_DEPTH = 10;
 /**
- * Parses a duration string into milliseconds.
- * Enforces a minimum interval of 10s (10000ms).
+ * Parses a duration string (e.g. '15s', '45m', '1h') into milliseconds.
+ * Throws on unparseable or non-positive input; clamps to MAX_DURATION_MS.
  */
 function parseDuration(val) {
-    const parsed = ms_default()(val);
-    if (parsed === undefined || isNaN(parsed)) {
+    let parsed;
+    try {
+        parsed = ms_default()(val.trim());
+    }
+    catch {
+        parsed = undefined;
+    }
+    if (parsed === undefined) {
         throw new Error(`Invalid duration format: ${val}`);
     }
-    return Math.max(parsed, 10000); // ECS-REQ-012: Minimum 10s
+    if (parsed <= 0) {
+        throw new Error(`Duration must be positive: ${val}`);
+    }
+    return Math.min(parsed, MAX_DURATION_MS);
 }
 /**
- * Resolves a potential annotated tag to its underlying commit SHA.
+ * Extracts the numeric HTTP status from an Octokit-style error, if present.
+ */
+function getErrorStatus(error) {
+    if (error && typeof error === 'object' && 'status' in error && typeof error.status === 'number') {
+        return error.status;
+    }
+    return undefined;
+}
+function getResponseHeaders(error) {
+    if (error && typeof error === 'object' && 'response' in error) {
+        const response = error.response;
+        if (response && typeof response === 'object' && 'headers' in response) {
+            const headers = response.headers;
+            if (headers && typeof headers === 'object') {
+                return headers;
+            }
+        }
+    }
+    return {};
+}
+/**
+ * ECS-REQ-021: transient server errors (5xx), 429 rate limits, and 403
+ * responses carrying rate-limit headers are retryable; everything else is not.
+ */
+function isRetryableApiError(error) {
+    const status = getErrorStatus(error);
+    if (status === undefined) {
+        return false;
+    }
+    if (status >= 500 || status === 429) {
+        return true;
+    }
+    if (status === 403) {
+        const headers = getResponseHeaders(error);
+        return String(headers['x-ratelimit-remaining']) === '0' || headers['retry-after'] !== undefined;
+    }
+    return false;
+}
+/**
+ * Delay requested by GitHub via retry-after (seconds) or x-ratelimit-reset
+ * (epoch seconds), or undefined when neither header is present.
+ */
+function getRetryAfterMs(error) {
+    const headers = getResponseHeaders(error);
+    const retryAfter = Number(headers['retry-after']);
+    if (headers['retry-after'] !== undefined && !isNaN(retryAfter)) {
+        return retryAfter * 1000;
+    }
+    const reset = Number(headers['x-ratelimit-reset']);
+    if (headers['x-ratelimit-reset'] !== undefined && !isNaN(reset)) {
+        return Math.max(reset * 1000 - Date.now(), 0);
+    }
+    return undefined;
+}
+/**
+ * Resolves a potential annotated tag to its underlying commit SHA
+ * (ECS-REQ-020), peeling nested tag objects (tag -> tag -> commit).
  */
 async function resolveCommitSha(octokit, owner, repo, sha) {
-    try {
-        const response = await octokit.rest.git.getTag({
-            owner,
-            repo,
-            tag_sha: sha
-        });
-        // ECS-REQ-020: Extract underlying object sha
-        return response.data.object.sha;
-    }
-    catch (error) {
-        // If 404, it's not a tag object (likely a direct commit SHA), proceed with original SHA
-        const isApiError = error && typeof error === 'object' && 'status' in error;
-        if (isApiError && error.status === 404) {
-            return sha;
+    let current = sha;
+    for (let depth = 0; depth < MAX_TAG_DEPTH; depth++) {
+        let object;
+        try {
+            const response = await octokit.rest.git.getTag({
+                owner,
+                repo,
+                tag_sha: current
+            });
+            object = response.data.object;
         }
-        throw error;
+        catch (error) {
+            // 404 means the SHA is not a tag object (a direct commit SHA).
+            if (getErrorStatus(error) === 404) {
+                return current;
+            }
+            throw error;
+        }
+        if (object.type === 'commit') {
+            return object.sha;
+        }
+        if (object.type === 'tag') {
+            current = object.sha;
+            continue;
+        }
+        throw new Error(`Annotated tag ${sha} does not resolve to a commit (points to a '${object.type}' object).`);
     }
+    throw new Error(`Annotated tag ${sha} exceeds the maximum nesting depth of ${MAX_TAG_DEPTH}.`);
 }
 /**
- * Halts execution for a specified duration.
+ * Halts execution for a specified duration (clamped to a safe setTimeout range).
  */
 async function sleep(milliseconds) {
-    return new Promise(resolve => setTimeout(resolve, milliseconds));
+    const delay = Math.min(Math.max(milliseconds, 0), MAX_DURATION_MS);
+    return new Promise(resolve => setTimeout(resolve, delay));
 }
 const utils = {
     parseDuration,
+    getErrorStatus,
+    isRetryableApiError,
+    getRetryAfterMs,
     resolveCommitSha,
     sleep
 };
@@ -36069,71 +36728,114 @@ const utils = {
 
 
 
-
-// Interface removed
+// ECS-REQ-012: strict minimum polling frequency.
+const MIN_POLL_INTERVAL_MS = 10000;
+// Full SHA-1 (40 hex chars) or SHA-256 (64 hex chars) object id.
+const COMMIT_SHA_PATTERN = /^[0-9a-f]{40}([0-9a-f]{24})?$/i;
+/**
+ * ECS-REQ-018: the list endpoint returns one entry per run, each already
+ * reflecting only its latest attempt, so the most recent run is selected
+ * (by created_at, tie-broken by id) rather than sorting by run_attempt.
+ */
+function selectMostRecentRun(runs) {
+    return runs.reduce((latest, candidate) => {
+        const latestTime = Date.parse(latest.created_at) || 0;
+        const candidateTime = Date.parse(candidate.created_at) || 0;
+        if (candidateTime !== latestTime) {
+            return candidateTime > latestTime ? candidate : latest;
+        }
+        return candidate.id > latest.id ? candidate : latest;
+    });
+}
 async function run() {
     try {
         // 1. Initialization (ECS-REQ-015)
         const workflowId = getInput('workflow-id', { required: true });
-        const commitSha = getInput('commit-sha') || github_context.sha;
-        const token = getInput('github-token') || '';
+        const commitSha = (getInput('commit-sha') || github_context.sha).trim();
+        const token = getInput('github-token');
         const pollIntervalRaw = getInput('poll-interval') || '15s';
         const timeoutRaw = getInput('timeout') || '1h';
-        // Parse and enforce minimums
-        const pollIntervalMs = utils.parseDuration(pollIntervalRaw);
-        // Parse timeout (we use ms directly here since it can be anything, but let's default to 1h if invalid)
-        let timeoutMs = ms_default()(timeoutRaw);
-        if (timeoutMs === undefined || isNaN(timeoutMs)) {
-            timeoutMs = 3600000; // 1 hour default fallback
+        if (!token) {
+            throw new Error("Input 'github-token' is required; pass ${{ github.token }} or a PAT with actions:read.");
         }
+        core_setSecret(token);
+        if (!COMMIT_SHA_PATTERN.test(commitSha)) {
+            throw new Error(`Input 'commit-sha' must be a full commit SHA (40 or 64 hex characters), got '${commitSha}'.`);
+        }
+        const requestedIntervalMs = utils.parseDuration(pollIntervalRaw);
+        let pollIntervalMs = requestedIntervalMs;
+        if (requestedIntervalMs < MIN_POLL_INTERVAL_MS) {
+            warning(`poll-interval '${pollIntervalRaw}' is below the 10s minimum; using 10s.`);
+            pollIntervalMs = MIN_POLL_INTERVAL_MS;
+        }
+        const timeoutMs = utils.parseDuration(timeoutRaw);
         const timeoutBoundary = Date.now() + timeoutMs;
         const octokit = getOctokit(token);
         const { owner, repo } = github_context.repo;
-        // Resolve annotated tags (ECS-REQ-020)
-        const resolvedSha = await utils.resolveCommitSha(octokit, owner, repo, commitSha);
-        info(`Resolved SHA for polling: ${resolvedSha}`);
+        // ECS-REQ-016: sleeps never run the wall clock meaningfully past the
+        // boundary (the +1 lets the strict '>' check fire after a capped sleep).
+        const boundedSleep = (desiredMs) => {
+            const remainingMs = Math.max(timeoutBoundary - Date.now() + 1, 0);
+            return utils.sleep(Math.min(desiredMs, remainingMs));
+        };
+        let resolvedSha = null;
+        let lastRunUrl = null;
         // Deterministic Polling Loop (ECS-REQ-019)
         for (;;) {
             // Check timeout boundary (ECS-REQ-016)
-            // Check timeout boundary (ECS-REQ-016)
             if (Date.now() > timeoutBoundary) {
                 setOutput('final-status', 'timeout');
+                if (lastRunUrl !== null) {
+                    setOutput('run-url', lastRunUrl);
+                }
                 setFailed(`Timeout exceeded (${timeoutRaw}) while waiting for test resolution.`);
                 return;
             }
             let runsData;
             try {
+                // Resolve annotated tags once (ECS-REQ-020), inside the resilient
+                // wrapper so transient errors during resolution retry (ECS-REQ-021).
+                if (resolvedSha === null) {
+                    resolvedSha = await utils.resolveCommitSha(octokit, owner, repo, commitSha);
+                    info(`Resolved SHA for polling: ${resolvedSha}`);
+                }
                 // Query Workflow Runs (ECS-REQ-017)
                 const response = await octokit.rest.actions.listWorkflowRuns({
                     owner,
                     repo,
                     workflow_id: workflowId,
-                    head_sha: resolvedSha
+                    head_sha: resolvedSha,
+                    per_page: 100
                 });
                 runsData = response.data;
             }
             catch (error) {
-                // API Resilience (ECS-REQ-021): bypass 5xx and 429
-                const isApiError = error && typeof error === 'object' && 'status' in error;
-                if (isApiError) {
-                    const status = error.status;
-                    if (status >= 500 || status === 429) {
-                        warning(`API error encountered (${status}). Retrying next interval.`);
-                        await utils.sleep(pollIntervalMs);
-                        continue;
-                    }
+                // API Resilience (ECS-REQ-021): retry 5xx, 429, and rate-limit 403s,
+                // honoring retry-after / x-ratelimit-reset when provided.
+                if (utils.isRetryableApiError(error)) {
+                    const status = utils.getErrorStatus(error);
+                    const retryAfterMs = utils.getRetryAfterMs(error) ?? 0;
+                    warning(`API error encountered (${status}). Retrying next interval.`);
+                    await boundedSleep(Math.max(pollIntervalMs, retryAfterMs));
+                    continue;
+                }
+                // Tag-resolution 404s are consumed inside resolveCommitSha, so a 404
+                // here always means the workflow itself was not found.
+                if (utils.getErrorStatus(error) === 404) {
+                    throw new Error(`Workflow '${workflowId}' not found in ${owner}/${repo} (HTTP 404). ` +
+                        `Check the workflow-id input and the token's actions:read permission.`, { cause: error });
                 }
                 throw error;
             }
             // Check for 0 runs (ECS-REQ-008)
             if (runsData.total_count === 0 || runsData.workflow_runs.length === 0) {
-                info('No workflow runs found. Suspending and polling...');
-                await utils.sleep(pollIntervalMs);
+                info(`No workflow runs found for SHA ${resolvedSha}. Suspending and polling...`);
+                await boundedSleep(pollIntervalMs);
                 continue;
             }
-            // Sort by run_attempt descending (ECS-REQ-018)
-            const sortedRuns = runsData.workflow_runs.sort((a, b) => (b.run_attempt || 0) - (a.run_attempt || 0));
-            const targetRun = sortedRuns[0];
+            // Select the most recent run (ECS-REQ-018)
+            const targetRun = selectMostRecentRun(runsData.workflow_runs);
+            lastRunUrl = targetRun.html_url;
             // Evaluation Matrix
             if (targetRun.status === 'completed') {
                 setOutput('run-url', targetRun.html_url);
@@ -36144,18 +36846,19 @@ async function run() {
                     return;
                 }
                 else {
-                    // ECS-REQ-005, ECS-REQ-006
+                    // ECS-REQ-005, ECS-REQ-006: any non-success conclusion fails closed.
                     setOutput('final-status', 'failure');
                     setFailed(`Tests failed with conclusion: ${targetRun.conclusion || 'unknown'}`);
                     return;
                 }
             }
-            // Pending state (ECS-REQ-007)
+            // Pending state (ECS-REQ-007): any non-completed status waits.
             info(`Tests currently in state: ${targetRun.status || 'unknown'}. Suspending and polling...`);
-            await utils.sleep(pollIntervalMs);
+            await boundedSleep(pollIntervalMs);
         }
     }
     catch (error) {
+        setOutput('final-status', 'error');
         if (error instanceof Error) {
             setFailed(error.message);
         }
@@ -36169,486 +36872,10 @@ async function run() {
 }
 
 ;// CONCATENATED MODULE: ./src/main.ts
-/* module decorator */ module = __nccwpck_require__.hmd(module);
 
-// Entry point for GitHub Action
-// istanbul ignore next - Action entrypoint
-if (__nccwpck_require__.c[__nccwpck_require__.s] === module) {
-    run().catch(error => {
-        console.error(error);
-        process.exit(1);
-    });
-}
+// GitHub Action entrypoint (ECS-REQ-001). run() reports every failure itself
+// via core.setFailed and never rejects, so it is invoked unconditionally.
+void run();
 
-
-/***/ }),
-
-/***/ 2613:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("assert");
-
-/***/ }),
-
-/***/ 4434:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("events");
-
-/***/ }),
-
-/***/ 8611:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("http");
-
-/***/ }),
-
-/***/ 5692:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("https");
-
-/***/ }),
-
-/***/ 9278:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("net");
-
-/***/ }),
-
-/***/ 4589:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:assert");
-
-/***/ }),
-
-/***/ 6698:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:async_hooks");
-
-/***/ }),
-
-/***/ 4573:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:buffer");
-
-/***/ }),
-
-/***/ 7540:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:console");
-
-/***/ }),
-
-/***/ 7598:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:crypto");
-
-/***/ }),
-
-/***/ 3053:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:diagnostics_channel");
-
-/***/ }),
-
-/***/ 610:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:dns");
-
-/***/ }),
-
-/***/ 8474:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:events");
-
-/***/ }),
-
-/***/ 7067:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:http");
-
-/***/ }),
-
-/***/ 2467:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:http2");
-
-/***/ }),
-
-/***/ 7030:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:net");
-
-/***/ }),
-
-/***/ 643:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:perf_hooks");
-
-/***/ }),
-
-/***/ 1792:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:querystring");
-
-/***/ }),
-
-/***/ 7075:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:stream");
-
-/***/ }),
-
-/***/ 1692:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:tls");
-
-/***/ }),
-
-/***/ 3136:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:url");
-
-/***/ }),
-
-/***/ 7975:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:util");
-
-/***/ }),
-
-/***/ 3429:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:util/types");
-
-/***/ }),
-
-/***/ 5919:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:worker_threads");
-
-/***/ }),
-
-/***/ 8522:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:zlib");
-
-/***/ }),
-
-/***/ 3193:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("string_decoder");
-
-/***/ }),
-
-/***/ 4756:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("tls");
-
-/***/ }),
-
-/***/ 9023:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("util");
-
-/***/ }),
-
-/***/ 1120:
-/***/ ((module) => {
-
-var __webpack_unused_export__;
-
-
-const NullObject = function NullObject () { }
-NullObject.prototype = Object.create(null)
-
-/**
- * RegExp to match *( ";" parameter ) in RFC 7231 sec 3.1.1.1
- *
- * parameter     = token "=" ( token / quoted-string )
- * token         = 1*tchar
- * tchar         = "!" / "#" / "$" / "%" / "&" / "'" / "*"
- *               / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
- *               / DIGIT / ALPHA
- *               ; any VCHAR, except delimiters
- * quoted-string = DQUOTE *( qdtext / quoted-pair ) DQUOTE
- * qdtext        = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
- * obs-text      = %x80-FF
- * quoted-pair   = "\" ( HTAB / SP / VCHAR / obs-text )
- */
-const paramRE = /; *([!#$%&'*+.^\w`|~-]+)=("(?:[\v\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u00ff]|\\[\v\u0020-\u00ff])*"|[!#$%&'*+.^\w`|~-]+) */gu
-
-/**
- * RegExp to match quoted-pair in RFC 7230 sec 3.2.6
- *
- * quoted-pair = "\" ( HTAB / SP / VCHAR / obs-text )
- * obs-text    = %x80-FF
- */
-const quotedPairRE = /\\([\v\u0020-\u00ff])/gu
-
-/**
- * RegExp to match type in RFC 7231 sec 3.1.1.1
- *
- * media-type = type "/" subtype
- * type       = token
- * subtype    = token
- */
-const mediaTypeRE = /^[!#$%&'*+.^\w|~-]+\/[!#$%&'*+.^\w|~-]+$/u
-
-// default ContentType to prevent repeated object creation
-const defaultContentType = { type: '', parameters: new NullObject() }
-Object.freeze(defaultContentType.parameters)
-Object.freeze(defaultContentType)
-
-/**
- * Parse media type to object.
- *
- * @param {string|object} header
- * @return {Object}
- * @public
- */
-
-function parse (header) {
-  if (typeof header !== 'string') {
-    throw new TypeError('argument header is required and must be a string')
-  }
-
-  let index = header.indexOf(';')
-  const type = index !== -1
-    ? header.slice(0, index).trim()
-    : header.trim()
-
-  if (mediaTypeRE.test(type) === false) {
-    throw new TypeError('invalid media type')
-  }
-
-  const result = {
-    type: type.toLowerCase(),
-    parameters: new NullObject()
-  }
-
-  // parse parameters
-  if (index === -1) {
-    return result
-  }
-
-  let key
-  let match
-  let value
-
-  paramRE.lastIndex = index
-
-  while ((match = paramRE.exec(header))) {
-    if (match.index !== index) {
-      throw new TypeError('invalid parameter format')
-    }
-
-    index += match[0].length
-    key = match[1].toLowerCase()
-    value = match[2]
-
-    if (value[0] === '"') {
-      // remove quotes and escapes
-      value = value
-        .slice(1, value.length - 1)
-
-      quotedPairRE.test(value) && (value = value.replace(quotedPairRE, '$1'))
-    }
-
-    result.parameters[key] = value
-  }
-
-  if (index !== header.length) {
-    throw new TypeError('invalid parameter format')
-  }
-
-  return result
-}
-
-function safeParse (header) {
-  if (typeof header !== 'string') {
-    return defaultContentType
-  }
-
-  let index = header.indexOf(';')
-  const type = index !== -1
-    ? header.slice(0, index).trim()
-    : header.trim()
-
-  if (mediaTypeRE.test(type) === false) {
-    return defaultContentType
-  }
-
-  const result = {
-    type: type.toLowerCase(),
-    parameters: new NullObject()
-  }
-
-  // parse parameters
-  if (index === -1) {
-    return result
-  }
-
-  let key
-  let match
-  let value
-
-  paramRE.lastIndex = index
-
-  while ((match = paramRE.exec(header))) {
-    if (match.index !== index) {
-      return defaultContentType
-    }
-
-    index += match[0].length
-    key = match[1].toLowerCase()
-    value = match[2]
-
-    if (value[0] === '"') {
-      // remove quotes and escapes
-      value = value
-        .slice(1, value.length - 1)
-
-      quotedPairRE.test(value) && (value = value.replace(quotedPairRE, '$1'))
-    }
-
-    result.parameters[key] = value
-  }
-
-  if (index !== header.length) {
-    return defaultContentType
-  }
-
-  return result
-}
-
-__webpack_unused_export__ = { parse, safeParse }
-__webpack_unused_export__ = parse
-module.exports.xL = safeParse
-__webpack_unused_export__ = defaultContentType
-
-
-/***/ })
-
-/******/ });
-/************************************************************************/
-/******/ // The module cache
-/******/ var __webpack_module_cache__ = {};
-/******/ 
-/******/ // The require function
-/******/ function __nccwpck_require__(moduleId) {
-/******/ 	// Check if module is in cache
-/******/ 	var cachedModule = __webpack_module_cache__[moduleId];
-/******/ 	if (cachedModule !== undefined) {
-/******/ 		return cachedModule.exports;
-/******/ 	}
-/******/ 	// Create a new module (and put it into the cache)
-/******/ 	var module = __webpack_module_cache__[moduleId] = {
-/******/ 		id: moduleId,
-/******/ 		loaded: false,
-/******/ 		exports: {}
-/******/ 	};
-/******/ 
-/******/ 	// Execute the module function
-/******/ 	var threw = true;
-/******/ 	try {
-/******/ 		__webpack_modules__[moduleId].call(module.exports, module, module.exports, __nccwpck_require__);
-/******/ 		threw = false;
-/******/ 	} finally {
-/******/ 		if(threw) delete __webpack_module_cache__[moduleId];
-/******/ 	}
-/******/ 
-/******/ 	// Flag the module as loaded
-/******/ 	module.loaded = true;
-/******/ 
-/******/ 	// Return the exports of the module
-/******/ 	return module.exports;
-/******/ }
-/******/ 
-/******/ // expose the module cache
-/******/ __nccwpck_require__.c = __webpack_module_cache__;
-/******/ 
-/************************************************************************/
-/******/ /* webpack/runtime/compat get default export */
-/******/ (() => {
-/******/ 	// getDefaultExport function for compatibility with non-harmony modules
-/******/ 	__nccwpck_require__.n = (module) => {
-/******/ 		var getter = module && module.__esModule ?
-/******/ 			() => (module['default']) :
-/******/ 			() => (module);
-/******/ 		__nccwpck_require__.d(getter, { a: getter });
-/******/ 		return getter;
-/******/ 	};
-/******/ })();
-/******/ 
-/******/ /* webpack/runtime/define property getters */
-/******/ (() => {
-/******/ 	// define getter functions for harmony exports
-/******/ 	__nccwpck_require__.d = (exports, definition) => {
-/******/ 		for(var key in definition) {
-/******/ 			if(__nccwpck_require__.o(definition, key) && !__nccwpck_require__.o(exports, key)) {
-/******/ 				Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
-/******/ 			}
-/******/ 		}
-/******/ 	};
-/******/ })();
-/******/ 
-/******/ /* webpack/runtime/harmony module decorator */
-/******/ (() => {
-/******/ 	__nccwpck_require__.hmd = (module) => {
-/******/ 		module = Object.create(module);
-/******/ 		if (!module.children) module.children = [];
-/******/ 		Object.defineProperty(module, 'exports', {
-/******/ 			enumerable: true,
-/******/ 			set: () => {
-/******/ 				throw new Error('ES Modules may not assign module.exports or exports.*, Use ESM export syntax, instead: ' + module.id);
-/******/ 			}
-/******/ 		});
-/******/ 		return module;
-/******/ 	};
-/******/ })();
-/******/ 
-/******/ /* webpack/runtime/hasOwnProperty shorthand */
-/******/ (() => {
-/******/ 	__nccwpck_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
-/******/ })();
-/******/ 
-/******/ /* webpack/runtime/compat */
-/******/ 
-/******/ if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = new URL('.', import.meta.url).pathname.slice(import.meta.url.match(/^file:\/\/\/\w:/) ? 1 : 0, -1) + "/";
-/******/ 
-/************************************************************************/
-/******/ 
-/******/ // module cache are used so entry inlining is disabled
-/******/ // startup
-/******/ // Load entry module and return exports
-/******/ var __webpack_exports__ = __nccwpck_require__(__nccwpck_require__.s = 1364);
-/******/ 
 
 //# sourceMappingURL=index.js.map

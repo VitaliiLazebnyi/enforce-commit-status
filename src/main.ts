@@ -1,10 +1,5 @@
 import { run } from './action.js';
 
-// Entry point for GitHub Action
-// istanbul ignore next - Action entrypoint
-if (require.main === module) {
-  run().catch(error => {
-    console.error(error);
-    process.exit(1);
-  });
-}
+// GitHub Action entrypoint (ECS-REQ-001). run() reports every failure itself
+// via core.setFailed and never rejects, so it is invoked unconditionally.
+void run();

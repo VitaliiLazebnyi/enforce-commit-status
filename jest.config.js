@@ -3,6 +3,7 @@ export default {
   testEnvironment: 'node',
   clearMocks: true,
   collectCoverage: true,
+  collectCoverageFrom: ['src/**/*.ts'],
   coverageDirectory: 'coverage',
   coverageReporters: ['json', 'lcov', 'text', 'clover'],
   coverageThreshold: {
@@ -13,18 +14,8 @@ export default {
       statements: 100
     }
   },
-  testMatch: ['**/*.test.ts'],
-  extensionsToTreatAsEsm: ['.ts'],
-  transform: {
-    '^.+\\.ts$': [
-      'ts-jest',
-      {
-        useESM: true,
-      },
-    ],
-  },
+  testMatch: ['<rootDir>/__tests__/**/*.test.ts'],
   moduleNameMapper: {
-    '^(\\.{1,2}/.*)\\.js$': '$1',
-  },
-  verbose: true
+    '^(\\.{1,2}/.*)\\.js$': '$1'
+  }
 };

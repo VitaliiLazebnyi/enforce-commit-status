@@ -2,10 +2,8 @@
   "compilerOptions": {
     "target": "ES2024",
     "module": "Node16",
-    "lib": ["es2024", "dom"],
-    "declaration": true,
+    "lib": ["es2024"],
     "sourceMap": true,
-    "outDir": "./lib",
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -20,11 +18,10 @@
     "noFallthroughCasesInSwitch": true,
     "moduleResolution": "node16",
     "esModuleInterop": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
+    "isolatedModules": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["jest", "node"]
+    "types": ["node"]
   },
   "include": ["src/**/*", "__tests__/**/*"],
   "exclude": ["node_modules", "dist", "lib"]

@@ -1,33 +1,37 @@
 name: 'Enforce Commit Status'
 description: 'Synchronous gatekeeper action; suspends build runner pending definitive test resolution.'
-author: 'VitaliiLazebnyi'
+author: 'Vitalii Lazebnyi'
+
+branding:
+  icon: 'watch'
+  color: 'green'
 
 inputs:
   workflow-id:
-    description: 'Filename or ID of the Tests workflow.'
+    description: 'Filename or ID of the Tests workflow (e.g., tests.yml).'
     required: true
   commit-sha:
-    description: 'Target Commit SHA.'
+    description: 'Target Commit SHA (full 40- or 64-character hash). Annotated tags are automatically resolved to their underlying commit.'
     required: false
     default: '${{ github.sha }}'
   github-token:
-    description: 'Authentication token for Actions API.'
+    description: 'Authentication token for the Actions API. Requires actions:read (and contents:read for annotated-tag resolution).'
     required: false
     default: '${{ github.token }}'
   poll-interval:
-    description: 'Polling frequency. Accepts duration strings (e.g., 10s, 1m). Minimum: 10s.'
+    description: 'Polling frequency. Accepts duration strings (e.g., 10s, 1m). Minimum: 10s (lower values are clamped with a warning).'
     required: false
     default: '15s'
   timeout:
-    description: 'Maximum suspension duration. Accepts duration strings (e.g., 45m, 2h).'
+    description: 'Maximum suspension duration before failing the step. Accepts duration strings (e.g., 45m, 2h). Invalid or non-positive values fail the action.'
     required: false
     default: '1h'
 
 outputs:
   final-status:
-    description: 'Resolved conclusion (success, failure, timeout).'
+    description: 'Resolved conclusion: success, failure, timeout, or error (the action itself failed before reaching a verdict).'
   run-url:
-    description: 'HTML URL of matched test run.'
+    description: 'HTML URL of the matched test run. Also set on timeout when a run was observed; empty if no run was ever matched.'
 
 runs:
   using: 'node24'

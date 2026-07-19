@@ -9,23 +9,47 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: '24' # Using 24 as it matches action.yml runs.using
+          node-version: '24' # Matches action.yml runs.using
+          cache: 'npm'
+
+      - name: Verify lockfile registry integrity
+        run: |
+          if grep '"resolved":' package-lock.json | grep -v 'https://registry.npmjs.org/'; then
+            echo "package-lock.json contains resolved URLs outside registry.npmjs.org."
+            exit 1
+          fi
 
       - name: Install Dependencies
         run: npm ci
 
+      - name: Verify dependency signatures
+        run: npm audit signatures
+
       - name: Lint
         run: npm run lint
+
+      - name: Check Formatting
+        run: npm run format:check
+
+      - name: Typecheck
+        run: npm run typecheck
 
       - name: Test
         run: npm run test
@@ -40,3 +64,27 @@ jobs:
             git status
             exit 1
           fi
+
+      - name: Smoke Test Packaged Action
+        # Proves the committed bundle actually executes run(): with an invalid
+        # token the action must fail (exit 1) and emit an ::error annotation.
+        # A fail-open no-op bundle would exit 0 with no output.
+        run: |
+          set +e
+          output=$(env "INPUT_WORKFLOW-ID=ci.yml" \
+                       "INPUT_GITHUB-TOKEN=smoke-test-invalid-token" \
+                       "INPUT_COMMIT-SHA=${GITHUB_SHA}" \
+                       "INPUT_POLL-INTERVAL=10s" \
+                       "INPUT_TIMEOUT=30s" \
+                       node dist/index.js 2>&1)
+          status=$?
+          echo "$output"
+          if [[ "$status" -eq 0 ]]; then
+            echo "FAIL: bundle exited 0 with an invalid token (fail-open)."
+            exit 1
+          fi
+          if ! grep -q '::error::' <<<"$output"; then
+            echo "FAIL: bundle produced no ::error output; run() may not have executed."
+            exit 1
+          fi
+          echo "OK: bundle executed run() and failed closed as expected."

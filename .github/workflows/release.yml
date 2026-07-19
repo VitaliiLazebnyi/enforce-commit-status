@@ -1,0 +1,56 @@
+name: Release
+
+# Verifies that the commit a release tag points to contains a dist/ bundle
+# byte-identical to a clean rebuild from that commit's source, then publishes
+# a GitHub release. Tags whose dist cannot be reproduced fail this workflow.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # create the GitHub release for the verified tag
+    steps:
+      - name: Checkout Tag
+        uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Quality Gates
+        run: |
+          npm run lint
+          npm run format:check
+          npm run typecheck
+          npm run test
+
+      - name: Rebuild and Verify dist
+        run: |
+          npm run build
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "Tagged dist/ does not match a clean rebuild of the tagged source."
+            git status
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" --generate-notes --verify-tag || \
+            echo "Release for ${GITHUB_REF_NAME} already exists; skipping."

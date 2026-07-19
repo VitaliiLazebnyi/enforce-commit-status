@@ -1,4 +1,9 @@
 npm run lint
+npm run format:check
+npm run typecheck
 npm test
 npm run build
-git add dist
+if ! git diff --quiet dist; then
+  echo "dist/ is out of date with src/. Review and stage the rebuilt dist/ before committing."
+  exit 1
+fi

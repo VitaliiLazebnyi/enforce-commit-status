@@ -32,7 +32,11 @@ jobs:
         with:
           results_file: results.sarif
           results_format: sarif
-          publish_results: true
+          # Publishing to the OpenSSF REST API (for the public badge) has
+          # strict workflow-validation requirements that reject this run;
+          # results still land in the repo's code-scanning dashboard via the
+          # SARIF upload below. Flip to true once the badge is wanted.
+          publish_results: false
 
       - name: Upload SARIF Results
         uses: github/codeql-action/upload-sarif@bb16b9baa2ec4010b29f5c606d57d01190139edd # v4.37.1

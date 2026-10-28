@@ -37803,7 +37803,8 @@ function readInputs() {
     const timeoutMs = utils.parseDuration(timeoutRaw);
     return {
         workflowId,
-        commitSha,
+        // The API reports (and filters `head_sha` by) lower-case object ids.
+        commitSha: commitSha.toLowerCase(),
         token,
         pollIntervalMs,
         timeoutRaw,

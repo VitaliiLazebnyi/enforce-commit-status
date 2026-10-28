@@ -186,6 +186,11 @@ describe('Enforce Commit Status Action', () => {
     it.each([
       ['surrounding whitespace (trimmed)', `  ${HEX_SHA}\n`, HEX_SHA],
       [
+        'upper case (polled in the lower-case form the API filters by)',
+        HEX_SHA.toUpperCase(),
+        HEX_SHA
+      ],
+      [
         'a 64-character SHA-256 id',
         `${HEX_SHA}${HEX_SHA.slice(0, 24)}`,
         `${HEX_SHA}${HEX_SHA.slice(0, 24)}`

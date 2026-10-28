@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Await Test Workflow Completion
         uses: VitaliiLazebnyi/enforce-commit-status@v1
@@ -107,7 +107,12 @@ Durations are capped at ~24.8 days (Node's `setTimeout` limit).
 
 - **Run selection**: when multiple runs exist for the same commit, the most recent run (by `created_at`, tie-broken by run id) is evaluated. The list endpoint already reflects only the latest attempt of each run.
 - **Fail-closed evaluation**: any completed conclusion other than `success` (including `neutral`, `skipped`, `cancelled`, `startup_failure`, …) fails the gate.
-- **API resilience**: HTTP 5xx, 429, and rate-limit 403 responses are retried on the next interval, honoring `retry-after` / `x-ratelimit-reset` headers when present.
+- **API resilience**: HTTP 5xx, 429, and rate-limit 403 responses are retried on the next interval, honoring `retry-after` and, once the quota is exhausted (`x-ratelimit-remaining: 0`), `x-ratelimit-reset`.
+- **SHA normalization**: `commit-sha` is trimmed and lower-cased before polling, matching the form the API reports and filters by.
+
+## Quality Gates
+
+Every change passes, in CI: strict TypeScript, ESLint with zero warnings, Prettier, 100% line and branch coverage, mutation testing with every mutant killed, `npm audit` with zero vulnerabilities, secret scanning, workflow and shell linting, and a check that the committed `dist/` is a byte-identical rebuild of `src/`. No inline suppressions are allowed, and every workflow fails on any warning in its logs. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full list and how to run each gate locally.
 
 ## Additional Documentation
 

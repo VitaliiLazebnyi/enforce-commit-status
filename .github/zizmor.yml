@@ -1,0 +1,12 @@
+# zizmor configuration (CI runs the pedantic persona). Every entry states why the audit cannot apply.
+rules:
+  # The `uses: $/...` self-repository syntax is not understood by actionlint (1.7.12, the newest
+  # release), which would then fail the workflow lint; `./` resolves to the same checked-out commit.
+  self-repository:
+    disable: true
+  adhoc-packages:
+    ignore:
+      # npm itself cannot come from the project's lockfile. The version is pinned exactly in the
+      # `packageManager` field of package.json, kept current by script/outdated.ts and verified after
+      # the install by script/check_node.sh.
+      - action.yml:21

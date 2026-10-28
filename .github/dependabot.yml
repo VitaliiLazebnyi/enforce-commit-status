@@ -4,11 +4,22 @@ updates:
     directory: '/'
     schedule:
       interval: weekly
+    # A release must have been public for a week before it is proposed.
+    cooldown:
+      default-days: 7
     groups:
       dev-dependencies:
         dependency-type: development
+    # The documented holds of script/outdated.json (the reasons are there).
+    ignore:
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: github-actions
-    directory: '/'
+    directories: ['/', '/.github/actions/*']
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7

@@ -1,0 +1,31 @@
+name: Set up Node.js and npm
+description: Installs the pinned Node.js and npm, verifies both versions, and installs the locked dependencies.
+
+inputs:
+  node-version:
+    description: Exact Node.js version; defaults to .node-version.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        node-version-file: ${{ inputs.node-version == '' && '.node-version' || '' }}
+
+    - name: Install the npm of package.json packageManager
+      shell: bash
+      run: npm install --global "$(node -p "require('./package.json').packageManager")"
+
+    - name: Check the Node.js and npm versions
+      shell: bash
+      env:
+        EXPECTED_NODE: ${{ inputs.node-version }}
+      run: script/check_node.sh ${EXPECTED_NODE:+"$EXPECTED_NODE"}
+
+    - name: Install the locked dependencies
+      shell: bash
+      run: npm ci

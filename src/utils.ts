@@ -119,8 +119,10 @@ function isRetryableApiError(error: unknown): boolean {
 }
 
 /**
- * Delay requested by GitHub before the next request: `retry-after` (seconds) or the time until
- * `x-ratelimit-reset` (epoch seconds).
+ * Delay requested by GitHub before the next request: `retry-after` (seconds) or, once the rate
+ * limit is exhausted (`x-ratelimit-remaining: 0`), the time until `x-ratelimit-reset` (epoch
+ * seconds). GitHub sends `x-ratelimit-reset` on every response, so it only applies when the quota
+ * is actually used up.
  * @param error - The caught error.
  * @returns The delay in milliseconds, 0 when GitHub requested none.
  */
@@ -129,7 +131,10 @@ function getRetryAfterMs(error: unknown): number {
   if (retryAfter !== undefined) {
     return retryAfter * 1000;
   }
-  const reset = parseNumber(getHeader(error, 'x-ratelimit-reset'));
+  const reset =
+    getHeader(error, 'x-ratelimit-remaining') === '0'
+      ? parseNumber(getHeader(error, 'x-ratelimit-reset'))
+      : undefined;
   return reset === undefined ? 0 : Math.max(reset * 1000 - Date.now(), 0);
 }
 

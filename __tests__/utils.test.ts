@@ -219,6 +219,17 @@ describe('utils', () => {
       ).toBe(30 * SECOND);
     });
 
+    it('regression: ignores x-ratelimit-reset while quota remains', () => {
+      vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+
+      expect(
+        utils.getRetryAfterMs(
+          headers({ 'x-ratelimit-remaining': '4999', 'x-ratelimit-reset': '4600' })
+        )
+      ).toBe(0);
+      expect(utils.getRetryAfterMs(headers({ 'x-ratelimit-reset': '4600' }))).toBe(0);
+    });
+
     it('floors past x-ratelimit-reset values at zero', () => {
       vi.spyOn(Date, 'now').mockReturnValue(2_000_000);
 

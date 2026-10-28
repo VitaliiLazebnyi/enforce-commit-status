@@ -635,6 +635,23 @@ describe('Enforce Commit Status Action', () => {
       expect(outputs()).toStrictEqual([['final-status', 'timeout']]);
     });
 
+    it('regression: ignores x-ratelimit-reset on 5xx errors while quota remains', async () => {
+      // GitHub sends x-ratelimit-reset on every response; honoring it here would stall a
+      // transient error until the rate-limit window resets (up to an hour).
+      mocks.listWorkflowRuns
+        .mockRejectedValueOnce({
+          status: 502,
+          message: 'Bad Gateway',
+          response: { headers: { 'x-ratelimit-remaining': '4999', 'x-ratelimit-reset': '3700' } }
+        })
+        .mockResolvedValueOnce(respond(makeRun()));
+
+      await run();
+
+      expect(sleeps()).toStrictEqual([[15_000]]);
+      expect(outputs()).toContainEqual(['final-status', 'success']);
+    });
+
     it('fails fast on 403 responses without rate-limit headers', async () => {
       mocks.listWorkflowRuns.mockRejectedValueOnce({
         status: 403,

@@ -12,14 +12,14 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "suppressions": "script/forbidden_suppressions.sh",
-    "markdownlint": "markdownlint-cli2",
     "knip": "knip",
     "duplication": "jscpd",
     "audit": "npm audit",
     "outdated": "node script/outdated.ts",
     "mutation": "stryker run",
-    "check": "npm run lint && npm run format:check && npm run typecheck && npm run suppressions && npm run markdownlint && npm run knip && npm run duplication && npm test && npm run audit",
-    "prepare": "husky"
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm run suppressions && npm run knip && npm run duplication && npm test && npm run audit",
+    "prepare": "husky",
+    "scorecard": "node script/dependency_scorecard.ts"
   },
   "keywords": [
     "actions",
@@ -71,7 +71,6 @@
     "husky": "9.1.7",
     "jscpd": "5.4.2",
     "knip": "6.43.0",
-    "markdownlint-cli2": "0.24.0",
     "prettier": "3.9.10",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.1",
@@ -79,7 +78,6 @@
   },
   "packageManager": "npm@12.2.1",
   "overrides": {
-    "katex": "0.19.1",
-    "qs": "6.17.0"
+    "qs": "6.17.1"
   }
 }

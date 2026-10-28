@@ -33,7 +33,7 @@ check 'non-null assertion' '[[:alnum:]_)\]]![.;,)[:space:]]' '(src|__tests__|scr
 check 'coverage exclusion' '(istanbul|c8|v8)[[:space:]]+ignore'
 check 'Stryker suppression' 'Stryker[[:space:]]+(disable|restore)'
 check 'Prettier suppression' 'prettier-ignore'
-check 'markdownlint suppression' 'markdownlint-(disable|enable|capture|restore|configure-file)'
+check 'Markdown lint suppression' '(markdownlint|rumdl)-(disable|enable|capture|restore|configure-file)'
 check 'jscpd suppression' 'jscpd:ignore'
 check 'gitleaks allow' 'gitleaks:allow'
 check 'zizmor ignore' 'zizmor: ?ignore'

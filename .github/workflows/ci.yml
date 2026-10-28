@@ -61,8 +61,6 @@ jobs:
         run: npm run format:check
       - name: Forbid inline suppressions
         run: script/forbidden_suppressions.sh
-      - name: markdownlint
-        run: npm run markdownlint
       - name: knip (unused files, exports and dependencies)
         run: npm run knip
       - name: jscpd (duplicated code)
@@ -81,6 +79,21 @@ jobs:
           tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" ./typos
       - name: typos
         run: '"$RUNNER_TEMP/typos"'
+
+      # rumdl implements the markdownlint rules as a standalone binary, so the Markdown linter
+      # adds no npm dependencies. The archive is verified against its published SHA-256.
+      - name: Install rumdl
+        env:
+          RUMDL_VERSION: 0.3.2
+          RUMDL_SHA256: 395c4061041c5a25301c7b3564a93c4a661ed4df93427a77b6fc9e426ec8a13a # rumdl-v0.3.2-x86_64-unknown-linux-musl.tar.gz
+        run: |
+          archive="rumdl-v${RUMDL_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$archive" \
+            "https://github.com/rvben/rumdl/releases/download/v${RUMDL_VERSION}/$archive"
+          echo "$RUMDL_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" rumdl
+      - name: rumdl (Markdown)
+        run: '"$RUNNER_TEMP/rumdl" check .'
 
   typecheck:
     name: TypeScript (strict)

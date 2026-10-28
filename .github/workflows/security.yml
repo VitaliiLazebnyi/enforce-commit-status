@@ -56,6 +56,12 @@ jobs:
         with:
           fail-on-severity: low
           comment-summary-in-pr: on-failure
+          # The OpenSSF Scorecard of every dependency stays in the job summary, but scores are not
+          # turned into warnings: they rate upstream projects (e.g. is-number, safer-buffer deep in
+          # the ESLint/Vitest/Stryker trees) that this repository can neither raise nor replace,
+          # and the warning gate fails on any warning. Known vulnerabilities still fail this job.
+          show-openssf-scorecard: true
+          warn-on-openssf-scorecard-level: 0
 
   gitleaks:
     name: Secret scanning (gitleaks)

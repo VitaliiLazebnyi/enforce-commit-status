@@ -73,8 +73,8 @@ The action polls the GitHub API and evaluates the status and conclusion of the m
 - **ECS-REQ-009 (Input: workflow-id)**: Must accept a required `workflow-id` string; a missing value must fail the action immediately.
 - **ECS-REQ-010 (Input: commit-sha)**: Must accept an optional `commit-sha` defaulting to the current GitHub SHA. The value must be validated as a full commit SHA (40 or 64 hex characters, after trimming); anything else fails fast with a descriptive error. A valid SHA is lower-cased before polling: the API reports and filters `head_sha` in lower case.
 - **ECS-REQ-011 (Input: github-token)**: Must accept an optional `github-token` defaulting to the GitHub API token. An explicitly empty token must fail fast with an actionable message, and the token must be registered as a secret (`core.setSecret`).
-- **ECS-REQ-012 (Input: poll-interval)**: Must accept an optional `poll-interval` parsed via `ms` defaulting to `15s`, enforcing a strict minimum of `10s`. Sub-minimum values are clamped to `10s` with a visible warning; unparseable or non-positive values fail the action.
-- **ECS-REQ-013 (Input: timeout)**: Must accept an optional `timeout` parsed via `ms` defaulting to `1h`. Unparseable or non-positive values must fail the action with `Invalid duration format: <value>` / `Duration must be positive: <value>` — there is no silent fallback. Durations are capped at 2,147,483,647 ms (~24.8 days, Node's `setTimeout` limit).
+- **ECS-REQ-012 (Input: poll-interval)**: Must accept an optional `poll-interval` parsed via `ms` defaulting to `15s`, enforcing a strict minimum of `10s`. Sub-minimum values are clamped to `10s` with a visible warning; unparsable or non-positive values fail the action.
+- **ECS-REQ-013 (Input: timeout)**: Must accept an optional `timeout` parsed via `ms` defaulting to `1h`. Unparsable or non-positive values must fail the action with `Invalid duration format: <value>` / `Duration must be positive: <value>` — there is no silent fallback. Durations are capped at 2,147,483,647 ms (~24.8 days, Node's `setTimeout` limit).
 - **ECS-REQ-014 (Outputs Emission)**: The action must emit `final-status` on every exit path (`success`, `failure`, `timeout`, or `error`), and `run-url` whenever a run was matched — including the timeout path when a pending run had been observed.
 
 ## 5. Execution Flow
@@ -117,4 +117,4 @@ Implementation strictly follows deterministic loop execution.
 _[ARCHIVED]_
 
 - **ECS-REQ-018 (pre-revision)**: "Sort the result array by `run_attempt` descending and evaluate index `[0]`." Obsolete: the list endpoint returns one entry per run (latest attempt only), so attempts of the same run never coexist in the response; sorting different runs by `run_attempt` could select a stale, manually re-run workflow over a newer run.
-- **ECS-REQ-013 (pre-revision)**: silent fallback to 1h for unparseable timeout values. Obsolete: invalid input now fails the action explicitly.
+- **ECS-REQ-013 (pre-revision)**: silent fallback to 1h for unparsable timeout values. Obsolete: invalid input now fails the action explicitly.

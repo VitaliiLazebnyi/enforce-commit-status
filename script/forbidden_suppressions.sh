@@ -18,9 +18,9 @@ status=0
 check() {
   local description=$1 pattern=$2 scope=${3:-}
   local hits
-  hits=$(printf '%s\n' "$files" | grep -E "^${scope}" | xargs -r grep -nEH -e "$pattern" -- || true)
-  if [ -n "$hits" ]; then
-    printf 'Forbidden (%s):\n%s\n\n' "$description" "$hits"
+  hits=$(printf '%s\n' "${files}" | grep -E "^${scope}" | xargs -r grep -nEH -e "${pattern}" -- || true)
+  if [[ -n "${hits}" ]]; then
+    printf 'Forbidden (%s):\n%s\n\n' "${description}" "${hits}"
     status=1
   fi
 }
@@ -43,4 +43,4 @@ check 'nosec' 'nosec'
 check 'warning silencing' '--no-warnings|--no-deprecation|--disable-warning|NODE_NO_WARNINGS|noDeprecation|removeAllListeners\(.warning|dangerouslyIgnoreUnhandledErrors|onConsoleLog'
 check 'skipped or focused test' '\b(it|test|describe|suite|bench)\.(skip|only|todo|fails|skipIf|runIf)\b|\b(xit|xtest|xdescribe|fit|fdescribe)\(' '__tests__/'
 
-exit "$status"
+exit "${status}"

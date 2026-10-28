@@ -24,3 +24,7 @@ build/
 .idea/
 .vscode/
 *.bak
+
+# Mutation testing
+reports/
+.stryker-tmp/

@@ -1,0 +1,14 @@
+{
+  "config": {
+    "default": true,
+    // Prettier wraps prose at its own width and formats tables; a second line-length rule would
+    // only disagree with it.
+    "MD013": false,
+    // REQUIREMENTS.md repeats a "Requirements" subsection under every numbered section by design;
+    // duplicates among sibling headings are still reported.
+    "MD024": { "siblings_only": true }
+  },
+  "globs": ["**/*.md"],
+  // Everything git ignores (node_modules/, coverage/, reports/, .stryker-tmp/, ...) is not ours.
+  "gitignore": true
+}

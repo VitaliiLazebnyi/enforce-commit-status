@@ -1,0 +1,26 @@
+{
+  "$comment": "Inputs of script/outdated.ts. `holds` lists every dependency that is deliberately not at its newest release, with the reason; `npm run outdated` fails for any other outdated dependency and for a hold whose reason no longer applies. `tools` maps the version variables of the workflows to the GitHub repository whose newest release they must pin. Holds checked against the registries on 2026-10-28.",
+  "holds": {
+    "node": {
+      "allowedMajor": 24,
+      "newestMajor": 26,
+      "reason": "The action runs on the `node24` runtime of the GitHub Actions runner (action.yml `runs.using`); the newest runner (v2.338.2) offers no newer Node.js runtime, and ECS-REQ-002 requires Node.js 24 LTS. Development and CI run the newest Node.js 24 release (.node-version); CI also runs the tests on the newest Node.js."
+    },
+    "@types/node": {
+      "allowedMajor": 24,
+      "newestMajor": 26,
+      "reason": "The type definitions must describe the Node.js 24 runtime the action executes on (ECS-REQ-002); @types/node 26 would type-check APIs that do not exist at run time."
+    },
+    "typescript": {
+      "allowedMajor": 6,
+      "newestMajor": 7,
+      "reason": "TypeScript 7 (the native port) ships no JavaScript compiler API. typescript-eslint 8.72.1 requires `typescript >=4.8.4 <6.1.0` and @stryker-mutator/typescript-checker uses the compiler API."
+    }
+  },
+  "tools": {
+    "ACTIONLINT_VERSION": "rhysd/actionlint",
+    "GITLEAKS_VERSION": "gitleaks/gitleaks",
+    "SHELLCHECK_VERSION": "koalaman/shellcheck",
+    "TYPOS_VERSION": "crate-ci/typos"
+  }
+}

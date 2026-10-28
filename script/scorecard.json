@@ -1,0 +1,24 @@
+{
+  "$comment": "Inputs of script/dependency_scorecard.ts. Every package of package-lock.json whose source repository has an OpenSSF Scorecard below `threshold` (Dependency review's default) fails the check unless `allowances` lists it with the reason it cannot be removed; an allowance that no longer applies fails too. Scores are those of api.scorecard.dev; the list was taken from Dependency review's report on 2026-10-28 (the Markdown linter, whose micromark packages scored 2.1-2.8, was replaced by the standalone rumdl binary instead of being allowed).",
+  "threshold": 3,
+  "allowances": {
+    "character-entities": "Transitive dependency of eslint-plugin-unicorn (micromark > decode-named-character-reference). unicorn has no variant without micromark, and its correctness rules are part of the lint gate.",
+    "decode-named-character-reference": "Transitive dependency of eslint-plugin-unicorn (micromark). unicorn has no variant without micromark, and its correctness rules are part of the lint gate.",
+    "des.js": "Transitive dependency of @stryker-mutator/core (typed-rest-client, used by its dashboard reporter, which core requires unconditionally). Stryker is the only mutation tester with a Vitest runner, and mutation testing is a required gate.",
+    "estree-walker": "Transitive dependency of vitest (@vitest/mocker) and @vitest/coverage-v8 (ast-v8-to-istanbul). Required by the test and coverage gates.",
+    "flru": "Transitive dependency of @stryker-mutator/core (its instrumenter's @babel/core). Stryker is the only mutation tester with a Vitest runner, and mutation testing is a required gate.",
+    "globrex": "Direct dependency of eslint-plugin-n. The plugin's rules on deprecated and unsupported Node.js APIs are part of the lint gate; no other plugin provides them.",
+    "human-signals": "Transitive dependency of @stryker-mutator/core (execa, used to run the test runner). Stryker is the only mutation tester with a Vitest runner, and mutation testing is a required gate.",
+    "import-meta-resolve": "Transitive dependency of @stryker-mutator/core (its instrumenter's @babel/core). Stryker is the only mutation tester with a Vitest runner, and mutation testing is a required gate.",
+    "js-md4": "Transitive dependency of @stryker-mutator/core (typed-rest-client, used by its dashboard reporter, which core requires unconditionally). Stryker is the only mutation tester with a Vitest runner, and mutation testing is a required gate.",
+    "js-tokens": "Transitive dependency of @stryker-mutator/core (its instrumenter's @babel/core > @babel/code-frame) and @vitest/coverage-v8. Required by the mutation and coverage gates.",
+    "minimalistic-assert": "Transitive dependency of @stryker-mutator/core (des.js of typed-rest-client, used by its dashboard reporter). Stryker is the only mutation tester with a Vitest runner, and mutation testing is a required gate.",
+    "progress": "Direct dependency of @stryker-mutator/core. Stryker is the only mutation tester with a Vitest runner, and mutation testing is a required gate.",
+    "require-from-string": "Transitive dependency of @stryker-mutator/core (ajv, which validates its configuration). Stryker is the only mutation tester with a Vitest runner, and mutation testing is a required gate.",
+    "safer-buffer": "Transitive dependency of @stryker-mutator/core (@inquirer/prompts > @inquirer/editor > @inquirer/external-editor > iconv-lite). Stryker is the only mutation tester with a Vitest runner, and mutation testing is a required gate.",
+    "spdx-exceptions": "Transitive dependency of eslint-plugin-jsdoc (spdx-expression-parse, used by its check-values rule). The plugin is the documentation-coverage gate.",
+    "spdx-expression-parse": "Direct dependency of eslint-plugin-jsdoc (its check-values rule). The plugin is the documentation-coverage gate.",
+    "spdx-license-ids": "Transitive dependency of eslint-plugin-jsdoc (spdx-expression-parse, used by its check-values rule). The plugin is the documentation-coverage gate.",
+    "tree-kill": "Direct dependency of @stryker-mutator/core. Stryker is the only mutation tester with a Vitest runner, and mutation testing is a required gate."
+  }
+}

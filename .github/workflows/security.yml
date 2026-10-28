@@ -39,6 +39,21 @@ jobs:
       - name: Verify registry signatures and provenance attestations
         run: npm audit signatures
 
+  scorecard:
+    name: OpenSSF Scorecard of the dependencies
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      # Every package of package-lock.json must come from a repository scoring at least the
+      # threshold of script/scorecard.json, unless that file allows it with a reason.
+      - run: npm run scorecard
+
   # Requires the repository's Dependency graph to be enabled (Settings > Code security).
   dependency-review:
     name: Dependency review
@@ -56,12 +71,11 @@ jobs:
         with:
           fail-on-severity: low
           comment-summary-in-pr: on-failure
-          # The OpenSSF Scorecard of every dependency stays in the job summary, but scores are not
-          # turned into warnings: they rate upstream projects (e.g. is-number, safer-buffer deep in
-          # the ESLint/Vitest/Stryker trees) that this repository can neither raise nor replace,
-          # and the warning gate fails on any warning. Known vulnerabilities still fail this job.
-          show-openssf-scorecard: true
-          warn-on-openssf-scorecard-level: 0
+          # The OpenSSF Scorecard check of the dependencies is the `scorecard` job above: this action
+          # can only warn on every package under one global threshold, while that job applies the
+          # same threshold to the whole dependency tree with documented per-package allowances
+          # (script/scorecard.json).
+          show-openssf-scorecard: false
 
   gitleaks:
     name: Secret scanning (gitleaks)
@@ -93,7 +107,7 @@ jobs:
   warning-gate:
     name: Warning gate
     if: ${{ !cancelled() }}
-    needs: [npm-audit, dependency-review, gitleaks]
+    needs: [npm-audit, scorecard, dependency-review, gitleaks]
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:

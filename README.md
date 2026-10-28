@@ -112,7 +112,7 @@ Durations are capped at ~24.8 days (Node's `setTimeout` limit).
 
 ## Quality Gates
 
-Every change passes, in CI: strict TypeScript, ESLint with zero warnings, Prettier, 100% line and branch coverage, mutation testing with every mutant killed, `npm audit` with zero vulnerabilities, secret scanning, workflow and shell linting, and a check that the committed `dist/` is a byte-identical rebuild of `src/`. No inline suppressions are allowed, and every workflow fails on any warning in its logs. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full list and how to run each gate locally.
+Every change passes, in CI: strict TypeScript, ESLint with zero warnings, Prettier, 100% line and branch coverage, mutation testing with every mutant killed, `npm audit` with zero vulnerabilities, an OpenSSF Scorecard floor for every dependency, secret scanning, workflow and shell linting, and a check that the committed `dist/` is a byte-identical rebuild of `src/`. No inline suppressions are allowed, and every workflow fails on any warning in its logs. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full list and how to run each gate locally.
 
 ## Additional Documentation
 

@@ -24,3 +24,10 @@ build/
 .idea/
 .vscode/
 *.bak
+
+# Mutation testing
+reports/
+.stryker-tmp/
+
+# rumdl (Markdown linter) cache
+.rumdl_cache/

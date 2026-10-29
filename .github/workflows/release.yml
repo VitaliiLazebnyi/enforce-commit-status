@@ -1,56 +1,80 @@
 name: Release
 
-# Verifies that the commit a release tag points to contains a dist/ bundle
-# byte-identical to a clean rebuild from that commit's source, then publishes
-# a GitHub release. Tags whose dist cannot be reproduced fail this workflow.
+# Verifies that the commit a release tag points to passes every gate and contains a dist/ bundle
+# byte-identical to a clean rebuild from that commit's source, then publishes a GitHub release.
 on:
   push:
     tags:
       - 'v*'
 
-permissions:
-  contents: read
+permissions: {}
+
+# Never cancel a release in flight.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_OPTIONS: --throw-deprecation
 
 jobs:
-  verify-and-release:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+  verify:
+    name: Verify
+    runs-on: ubuntu-26.04
+    timeout-minutes: 60
     permissions:
-      contents: write # create the GitHub release for the verified tag
+      contents: read
     steps:
-      - name: Checkout Tag
-        uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
-        with:
-          node-version: '24'
-          cache: 'npm'
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Run Quality Gates
-        run: |
-          npm run lint
-          npm run format:check
-          npm run typecheck
-          npm run test
-
-      - name: Rebuild and Verify dist
+      # No dependency cache in the release pipeline: a poisoned cache must never reach a release.
+      - uses: ./.github/actions/setup
+      - run: npm run check
+      - run: npm run mutation
+      - name: Rebuild and verify dist/
         run: |
           npm run build
-          if [[ -n $(git status --porcelain) ]]; then
-            echo "Tagged dist/ does not match a clean rebuild of the tagged source."
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "Tagged dist/ does not match a clean rebuild of the tagged source." >&2
             git status
             exit 1
           fi
 
-      - name: Create GitHub Release
+  release:
+    name: Publish the GitHub release
+    needs: [verify]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: write # create the GitHub release for the verified tag
+    steps:
+      - name: Create the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" --generate-notes --verify-tag || \
-            echo "Release for ${GITHUB_REF_NAME} already exists; skipping."
+          if gh release view "${GITHUB_REF_NAME}" > /dev/null 2>&1; then
+            echo "Release ${GITHUB_REF_NAME} already exists; skipping."
+          else
+            gh release create "${GITHUB_REF_NAME}" --generate-notes --verify-tag
+          fi
+
+  warning-gate:
+    name: Warning gate
+    if: ${{ !cancelled() }}
+    needs: [verify, release]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      actions: read # reads the logs of the other jobs of this run
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Fail on any warning or deprecation in the logs of this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GATE_JOB_NAME: Warning gate
+        run: script/warning_gate.sh

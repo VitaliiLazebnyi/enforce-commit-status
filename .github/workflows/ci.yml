@@ -2,70 +2,134 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
+    branches: [main]
+  workflow_dispatch:
 
-permissions:
-  contents: read
+# Nothing is writable by default; every job re-declares the (read-only) permissions it needs.
+permissions: {}
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Deprecations of Node.js APIs fail the process that hits them.
+  NODE_OPTIONS: --throw-deprecation
+
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
+  test:
+    name: Tests (Node.js ${{ matrix.node-version || 'runtime' }})
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The Node.js 24 of .node-version: the action's node24 runtime.
+          - node-version: ''
+          # The newest Node.js release.
+          - node-version: '26.13.0'
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+      - uses: ./.github/actions/setup
         with:
-          node-version: '24' # Matches action.yml runs.using
-          cache: 'npm'
+          node-version: ${{ matrix.node-version }}
+      # Vitest enforces 100% line, branch, function and statement coverage; any Node.js process
+      # warning fails the run (__tests__/setup/warnings-as-errors.ts).
+      - run: npm test
 
-      - name: Verify lockfile registry integrity
-        run: |
-          if grep '"resolved":' package-lock.json | grep -v 'https://registry.npmjs.org/'; then
-            echo "package-lock.json contains resolved URLs outside registry.npmjs.org."
-            exit 1
-          fi
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Verify dependency signatures
-        run: npm audit signatures
-
-      - name: Lint
+  lint:
+    name: Lint, format, suppressions, docs, duplication
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: ESLint (zero warnings)
         run: npm run lint
-
-      - name: Check Formatting
+      - name: Prettier
         run: npm run format:check
+      - name: Forbid inline suppressions
+        run: script/forbidden_suppressions.sh
+      - name: knip (unused files, exports and dependencies)
+        run: npm run knip
+      - name: jscpd (duplicated code)
+        run: npm run duplication
 
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Test
-        run: npm run test
-
-      - name: Build
-        run: npm run build
-
-      - name: Verify Clean Repository
+      # The archive is verified against its SHA-256 before it is run.
+      - name: Install typos
+        env:
+          TYPOS_VERSION: 1.51.1
+          TYPOS_SHA256: 93c301fd4120ff076e2cc2a6d6a61cab4a4bdb81899287c0938b452e56d1f454 # typos-v1.51.1-x86_64-unknown-linux-musl.tar.gz
         run: |
-          if [[ -n $(git status --porcelain) ]]; then
-            echo "Working directory is dirty. Please run 'npm run build' locally and commit the changes."
+          archive="typos-v${TYPOS_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$archive" \
+            "https://github.com/crate-ci/typos/releases/download/v${TYPOS_VERSION}/$archive"
+          echo "$TYPOS_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" ./typos
+      - name: typos
+        run: '"$RUNNER_TEMP/typos"'
+
+      # rumdl implements the markdownlint rules as a standalone binary, so the Markdown linter
+      # adds no npm dependencies. The archive is verified against its published SHA-256.
+      - name: Install rumdl
+        env:
+          RUMDL_VERSION: 0.3.2
+          RUMDL_SHA256: 395c4061041c5a25301c7b3564a93c4a661ed4df93427a77b6fc9e426ec8a13a # rumdl-v0.3.2-x86_64-unknown-linux-musl.tar.gz
+        run: |
+          archive="rumdl-v${RUMDL_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$archive" \
+            "https://github.com/rvben/rumdl/releases/download/v${RUMDL_VERSION}/$archive"
+          echo "$RUMDL_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" rumdl
+      - name: rumdl (Markdown)
+        run: '"$RUNNER_TEMP/rumdl" check .'
+
+  typecheck:
+    name: TypeScript (strict)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: npm run typecheck
+
+  dist:
+    name: dist/ is a clean rebuild of src/
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: npm run build
+      - name: Fail if the committed dist/ differs from the rebuild
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "dist/ is out of date: run 'npm run build' and commit the result." >&2
             git status
+            git diff --stat
             exit 1
           fi
 
-      - name: Smoke Test Packaged Action
+      - name: Smoke test the packaged action
         # Proves the committed bundle actually executes run(): with an invalid
         # token the action must fail (exit 1) and emit an ::error annotation.
         # A fail-open no-op bundle would exit 0 with no output.
@@ -88,3 +152,37 @@ jobs:
             exit 1
           fi
           echo "OK: bundle executed run() and failed closed as expected."
+
+  # Every dependency must be at its newest release, except the documented holds of
+  # script/outdated.json, which state why each one is held.
+  outdated:
+    name: Outdated dependencies
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: npm run outdated
+
+  warning-gate:
+    name: Warning gate
+    if: ${{ !cancelled() }}
+    needs: [test, lint, typecheck, dist, outdated]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      actions: read # reads the logs of the other jobs of this run
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Fail on any warning or deprecation in the logs of this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GATE_JOB_NAME: Warning gate
+        run: script/warning_gate.sh

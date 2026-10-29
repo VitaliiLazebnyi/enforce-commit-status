@@ -1,33 +1,98 @@
-import { jest, describe, it, expect, afterEach } from '@jest/globals';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { utils } from '../src/utils.js';
-import type * as githubType from '@actions/github';
 
-type Octokit = ReturnType<typeof githubType.getOctokit>;
+interface TagResponse {
+  data: { object: { sha: string; type: string } };
+}
 
-const asOctokit = (mock: unknown): Octokit => mock as Octokit;
+const makeClient = (
+  getTag: (parameters: { owner: string; repo: string; tag_sha: string }) => Promise<TagResponse>
+): Parameters<typeof utils.resolveCommitSha>[0] => ({ rest: { git: { getTag } } });
+
+const tagObject = (sha: string, type: string): TagResponse => ({ data: { object: { sha, type } } });
+
+const SECOND = 1000;
+const MINUTE = 60 * SECOND;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+const WEEK = 7 * DAY;
+const YEAR = 365.25 * DAY;
 
 describe('utils', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
   describe('ECS-REQ-012, ECS-REQ-015: parseDuration', () => {
-    it('parses valid duration strings into milliseconds', () => {
-      expect(utils.parseDuration('15s')).toBe(15000);
-      expect(utils.parseDuration('1m')).toBe(60000);
-      expect(utils.parseDuration('45m')).toBe(2700000);
+    it.each([
+      ['500', 500],
+      ['1.25s', 1250],
+      ['.5s', 500],
+      ['.25s', 250],
+      ['5s', 5 * SECOND],
+      ['15s', 15 * SECOND],
+      ['5 m', 5 * MINUTE],
+      ['5   m', 5 * MINUTE],
+      ['2H', 2 * HOUR]
+    ])('parses %s', (value, expected) => {
+      expect(utils.parseDuration(value)).toBe(expected);
     });
 
-    it('parses bare numeric strings as milliseconds', () => {
-      expect(utils.parseDuration('500')).toBe(500);
+    it.each([
+      ['milliseconds', 1],
+      ['millisecond', 1],
+      ['msecs', 1],
+      ['msec', 1],
+      ['ms', 1],
+      ['seconds', SECOND],
+      ['second', SECOND],
+      ['secs', SECOND],
+      ['sec', SECOND],
+      ['s', SECOND],
+      ['minutes', MINUTE],
+      ['minute', MINUTE],
+      ['mins', MINUTE],
+      ['min', MINUTE],
+      ['m', MINUTE],
+      ['hours', HOUR],
+      ['hour', HOUR],
+      ['hrs', HOUR],
+      ['hr', HOUR],
+      ['h', HOUR],
+      ['days', DAY],
+      ['day', DAY],
+      ['d', DAY],
+      ['weeks', WEEK],
+      ['week', WEEK],
+      ['w', WEEK]
+    ])('accepts the unit %s', (unit, multiplier) => {
+      expect(utils.parseDuration(`3${unit}`)).toBe(3 * multiplier);
+    });
+
+    it.each(['years', 'year', 'yrs', 'yr', 'y'])('accepts the unit %s', unit => {
+      expect(utils.parseDuration(`0.001${unit}`)).toBe(0.001 * YEAR);
     });
 
     it('trims surrounding whitespace', () => {
-      expect(utils.parseDuration(' 15s ')).toBe(15000);
+      expect(utils.parseDuration(' 15s ')).toBe(15 * SECOND);
     });
 
-    it('throws a uniform error on invalid duration strings', () => {
-      expect(() => utils.parseDuration('invalid')).toThrow('Invalid duration format: invalid');
+    it('accepts durations of exactly 100 characters', () => {
+      expect(utils.parseDuration(`${'0'.repeat(98)}1s`)).toBe(SECOND);
     });
 
-    it('throws a uniform error on empty strings', () => {
-      expect(() => utils.parseDuration('')).toThrow('Invalid duration format: ');
+    it.each([
+      ['invalid', 'invalid'],
+      ['empty', ''],
+      ['blank', ' '.repeat(3)],
+      ['unit-only', 's'],
+      ['unknown unit', '5x'],
+      ['trailing garbage', '5s later'],
+      ['leading garbage', 'in 5s'],
+      ['longer than 100 characters', `${'0'.repeat(99)}1s`]
+    ])('throws a uniform error on %s input', (_description, value) => {
+      expect(() => utils.parseDuration(value)).toThrow(`Invalid duration format: ${value}`);
     });
 
     it('rejects negative durations', () => {
@@ -39,7 +104,7 @@ describe('utils', () => {
     });
 
     it('clamps durations above the setTimeout limit (~24.8 days)', () => {
-      expect(utils.parseDuration('30d')).toBe(2147483647);
+      expect(utils.parseDuration('30d')).toBe(2_147_483_647);
     });
   });
 
@@ -48,202 +113,290 @@ describe('utils', () => {
       expect(utils.getErrorStatus({ status: 502 })).toBe(502);
     });
 
-    it('returns undefined for non-numeric statuses and non-objects', () => {
-      expect(utils.getErrorStatus({ status: 'nope' })).toBeUndefined();
-      expect(utils.getErrorStatus({})).toBeUndefined();
-      expect(utils.getErrorStatus(null)).toBeUndefined();
-      expect(utils.getErrorStatus('boom')).toBeUndefined();
+    it.each([
+      ['a non-numeric status', { status: 'nope' }],
+      ['an object without status', {}],
+      ['null', null],
+      ['undefined', undefined],
+      ['a string', 'boom']
+    ])('returns undefined for %s', (_description, error) => {
+      expect(utils.getErrorStatus(error)).toBeUndefined();
     });
   });
 
   describe('ECS-REQ-021: isRetryableApiError', () => {
-    it('retries 5xx and 429 responses', () => {
-      expect(utils.isRetryableApiError({ status: 500 })).toBe(true);
-      expect(utils.isRetryableApiError({ status: 502 })).toBe(true);
-      expect(utils.isRetryableApiError({ status: 429 })).toBe(true);
+    it.each([500, 502, 599, 429])('retries HTTP %i responses', status => {
+      expect(utils.isRetryableApiError({ status })).toBe(true);
     });
 
-    it('retries 403 responses carrying rate-limit headers', () => {
-      expect(
-        utils.isRetryableApiError({
-          status: 403,
-          response: { headers: { 'x-ratelimit-remaining': '0' } }
-        })
-      ).toBe(true);
-      expect(
-        utils.isRetryableApiError({
-          status: 403,
-          response: { headers: { 'retry-after': '60' } }
-        })
-      ).toBe(true);
+    it.each([
+      ['an exhausted quota', { 'x-ratelimit-remaining': '0' }],
+      ['an exhausted quota (numeric header)', { 'x-ratelimit-remaining': 0 }],
+      ['a retry-after header', { 'retry-after': '60' }]
+    ])('retries 403 responses carrying %s', (_description, headers) => {
+      expect(utils.isRetryableApiError({ status: 403, response: { headers } })).toBe(true);
     });
 
-    it('does not retry plain 403 or other 4xx responses', () => {
-      expect(utils.isRetryableApiError({ status: 403 })).toBe(false);
-      expect(utils.isRetryableApiError({ status: 403, response: { headers: {} } })).toBe(false);
-      expect(utils.isRetryableApiError({ status: 401 })).toBe(false);
-      expect(utils.isRetryableApiError({ status: 404 })).toBe(false);
+    it.each([
+      ['a plain 403', { status: 403 }],
+      ['a 403 without rate-limit headers', { status: 403, response: { headers: {} } }],
+      [
+        'a 403 with quota left',
+        { status: 403, response: { headers: { 'x-ratelimit-remaining': '10' } } }
+      ],
+      [
+        'a 401 with rate-limit headers',
+        { status: 401, response: { headers: { 'retry-after': '60' } } }
+      ],
+      ['a 499', { status: 499 }],
+      ['a 404', { status: 404 }],
+      ['an Error without status', new Error('boom')],
+      ['null', null]
+    ])('does not retry %s', (_description, error) => {
+      expect(utils.isRetryableApiError(error)).toBe(false);
     });
 
-    it('does not retry errors without a status', () => {
-      expect(utils.isRetryableApiError(new Error('boom'))).toBe(false);
-      expect(utils.isRetryableApiError(null)).toBe(false);
-    });
-
-    it('tolerates malformed response shapes', () => {
-      expect(utils.isRetryableApiError({ status: 403, response: null })).toBe(false);
-      expect(utils.isRetryableApiError({ status: 403, response: {} })).toBe(false);
-      expect(utils.isRetryableApiError({ status: 403, response: { headers: null } })).toBe(false);
+    it.each([
+      ['a null response', null],
+      ['an undefined response', undefined],
+      ['a response without headers', {}],
+      ['null headers', { headers: null }],
+      ['a non-scalar header value', { headers: { 'retry-after': { seconds: 60 } } }]
+    ])('tolerates %s', (_description, response) => {
+      expect(utils.isRetryableApiError({ status: 403, response })).toBe(false);
     });
   });
 
   describe('ECS-REQ-021: getRetryAfterMs', () => {
+    const headers = (values: Record<string, unknown>): unknown => ({
+      status: 403,
+      response: { headers: values }
+    });
+
     it('converts retry-after seconds to milliseconds', () => {
+      expect(utils.getRetryAfterMs(headers({ 'retry-after': '30' }))).toBe(30 * SECOND);
+    });
+
+    it('accepts numeric retry-after values', () => {
+      expect(utils.getRetryAfterMs(headers({ 'retry-after': 7 }))).toBe(7 * SECOND);
+    });
+
+    it('prefers retry-after over x-ratelimit-reset', () => {
+      vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+
       expect(
-        utils.getRetryAfterMs({ status: 429, response: { headers: { 'retry-after': '30' } } })
-      ).toBe(30000);
+        utils.getRetryAfterMs(
+          headers({ 'retry-after': '5', 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': '1030' })
+        )
+      ).toBe(5 * SECOND);
     });
 
     it('ignores non-numeric retry-after values', () => {
-      expect(
-        utils.getRetryAfterMs({ status: 429, response: { headers: { 'retry-after': 'soon' } } })
-      ).toBeUndefined();
+      expect(utils.getRetryAfterMs(headers({ 'retry-after': 'soon' }))).toBe(0);
     });
 
-    it('derives the delay from x-ratelimit-reset', () => {
-      const dateSpy = jest.spyOn(Date, 'now').mockReturnValue(1000000);
+    it('derives the delay from x-ratelimit-reset once the quota is exhausted', () => {
+      vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+
       expect(
-        utils.getRetryAfterMs({
-          status: 403,
-          response: { headers: { 'x-ratelimit-reset': '1030' } }
-        })
-      ).toBe(30000);
-      dateSpy.mockRestore();
+        utils.getRetryAfterMs(
+          headers({ 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': '1030' })
+        )
+      ).toBe(30 * SECOND);
+    });
+
+    it('falls back from a non-numeric retry-after to x-ratelimit-reset', () => {
+      vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+
+      expect(
+        utils.getRetryAfterMs(
+          headers({
+            'retry-after': 'soon',
+            'x-ratelimit-remaining': '0',
+            'x-ratelimit-reset': '1030'
+          })
+        )
+      ).toBe(30 * SECOND);
+    });
+
+    it('regression: ignores x-ratelimit-reset while quota remains', () => {
+      vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+
+      expect(
+        utils.getRetryAfterMs(
+          headers({ 'x-ratelimit-remaining': '4999', 'x-ratelimit-reset': '4600' })
+        )
+      ).toBe(0);
+      expect(utils.getRetryAfterMs(headers({ 'x-ratelimit-reset': '4600' }))).toBe(0);
     });
 
     it('floors past x-ratelimit-reset values at zero', () => {
-      const dateSpy = jest.spyOn(Date, 'now').mockReturnValue(2000000);
+      vi.spyOn(Date, 'now').mockReturnValue(2_000_000);
+
       expect(
-        utils.getRetryAfterMs({
-          status: 403,
-          response: { headers: { 'x-ratelimit-reset': '1030' } }
-        })
+        utils.getRetryAfterMs(
+          headers({ 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': '1030' })
+        )
       ).toBe(0);
-      dateSpy.mockRestore();
     });
 
-    it('returns undefined when no rate-limit headers are present', () => {
-      expect(utils.getRetryAfterMs({ status: 502 })).toBeUndefined();
-      expect(utils.getRetryAfterMs({ status: 429, response: { headers: {} } })).toBeUndefined();
+    it('ignores a non-numeric x-ratelimit-reset', () => {
+      expect(
+        utils.getRetryAfterMs(
+          headers({ 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': 'later' })
+        )
+      ).toBe(0);
+    });
+
+    it.each([
+      ['an error without a response', { status: 500 }],
+      ['null', null],
+      ['a string', 'boom']
+    ])('returns 0 for %s', (_description, error) => {
+      expect(utils.getRetryAfterMs(error)).toBe(0);
     });
   });
 
   describe('ECS-REQ-020: resolveCommitSha', () => {
-    const makeOctokit = (getTag: jest.Mock<(...args: unknown[]) => Promise<unknown>>): Octokit =>
-      asOctokit({ rest: { git: { getTag } } });
-
     it('resolves an annotated tag to its underlying commit SHA', async () => {
-      const getTag = jest
-        .fn<(...args: unknown[]) => Promise<unknown>>()
-        .mockResolvedValue({ data: { object: { sha: 'underlying-commit-sha', type: 'commit' } } });
+      const getTag = vi
+        .fn<
+          (parameters: { owner: string; repo: string; tag_sha: string }) => Promise<TagResponse>
+        >()
+        .mockResolvedValue(tagObject('underlying-commit-sha', 'commit'));
 
-      const sha = await utils.resolveCommitSha(makeOctokit(getTag), 'o', 'r', 'tag-sha');
-      expect(sha).toBe('underlying-commit-sha');
+      await expect(utils.resolveCommitSha(makeClient(getTag), 'o', 'r', 'tag-sha')).resolves.toBe(
+        'underlying-commit-sha'
+      );
       expect(getTag).toHaveBeenCalledWith({ owner: 'o', repo: 'r', tag_sha: 'tag-sha' });
     });
 
     it('peels nested annotated tags (tag -> tag -> commit)', async () => {
-      const getTag = jest
-        .fn<(...args: unknown[]) => Promise<unknown>>()
-        .mockResolvedValueOnce({ data: { object: { sha: 'inner-tag-sha', type: 'tag' } } })
-        .mockResolvedValueOnce({ data: { object: { sha: 'commit-sha', type: 'commit' } } });
+      const getTag = vi
+        .fn<
+          (parameters: { owner: string; repo: string; tag_sha: string }) => Promise<TagResponse>
+        >()
+        .mockResolvedValueOnce(tagObject('inner-tag-sha', 'tag'))
+        .mockResolvedValueOnce(tagObject('commit-sha', 'commit'));
 
-      const sha = await utils.resolveCommitSha(makeOctokit(getTag), 'o', 'r', 'outer-tag-sha');
-      expect(sha).toBe('commit-sha');
+      await expect(
+        utils.resolveCommitSha(makeClient(getTag), 'o', 'r', 'outer-tag-sha')
+      ).resolves.toBe('commit-sha');
       expect(getTag).toHaveBeenCalledTimes(2);
       expect(getTag).toHaveBeenLastCalledWith({ owner: 'o', repo: 'r', tag_sha: 'inner-tag-sha' });
     });
 
-    it('proceeds with the original SHA if the git database API returns 404', async () => {
-      const getTag = jest
-        .fn<(...args: unknown[]) => Promise<unknown>>()
+    it('proceeds with the current SHA once the git database API returns 404', async () => {
+      const getTag = vi
+        .fn<
+          (parameters: { owner: string; repo: string; tag_sha: string }) => Promise<TagResponse>
+        >()
+        .mockResolvedValueOnce(tagObject('inner-sha', 'tag'))
         .mockRejectedValue({ status: 404 });
 
-      const sha = await utils.resolveCommitSha(makeOctokit(getTag), 'o', 'r', 'plain-commit-sha');
-      expect(sha).toBe('plain-commit-sha');
+      await expect(
+        utils.resolveCommitSha(makeClient(getTag), 'o', 'r', 'plain-commit-sha')
+      ).resolves.toBe('inner-sha');
     });
 
     it('fails fast when a tag points at a non-commit object', async () => {
-      const getTag = jest
-        .fn<(...args: unknown[]) => Promise<unknown>>()
-        .mockResolvedValue({ data: { object: { sha: 'tree-sha', type: 'tree' } } });
+      const getTag = vi
+        .fn<
+          (parameters: { owner: string; repo: string; tag_sha: string }) => Promise<TagResponse>
+        >()
+        .mockResolvedValue(tagObject('tree-sha', 'tree'));
 
-      await expect(
-        utils.resolveCommitSha(makeOctokit(getTag), 'o', 'r', 'tag-sha')
-      ).rejects.toThrow(
+      await expect(utils.resolveCommitSha(makeClient(getTag), 'o', 'r', 'tag-sha')).rejects.toThrow(
         "Annotated tag tag-sha does not resolve to a commit (points to a 'tree' object)."
       );
     });
 
-    it('fails fast on absurdly deep tag nesting', async () => {
-      const getTag = jest
-        .fn<(...args: unknown[]) => Promise<unknown>>()
-        .mockResolvedValue({ data: { object: { sha: 'another-tag-sha', type: 'tag' } } });
+    it('peels up to 10 levels of nested tags', async () => {
+      const getTag = vi
+        .fn<
+          (parameters: { owner: string; repo: string; tag_sha: string }) => Promise<TagResponse>
+        >()
+        .mockResolvedValue(tagObject('another-tag-sha', 'tag'))
+        .mockResolvedValueOnce(tagObject('t1', 'tag'))
+        .mockResolvedValueOnce(tagObject('t2', 'tag'))
+        .mockResolvedValueOnce(tagObject('t3', 'tag'))
+        .mockResolvedValueOnce(tagObject('t4', 'tag'))
+        .mockResolvedValueOnce(tagObject('t5', 'tag'))
+        .mockResolvedValueOnce(tagObject('t6', 'tag'))
+        .mockResolvedValueOnce(tagObject('t7', 'tag'))
+        .mockResolvedValueOnce(tagObject('t8', 'tag'))
+        .mockResolvedValueOnce(tagObject('t9', 'tag'))
+        .mockResolvedValueOnce(tagObject('deep-commit', 'commit'));
 
-      await expect(
-        utils.resolveCommitSha(makeOctokit(getTag), 'o', 'r', 'tag-sha')
-      ).rejects.toThrow('Annotated tag tag-sha exceeds the maximum nesting depth of 10.');
+      await expect(utils.resolveCommitSha(makeClient(getTag), 'o', 'r', 'tag-sha')).resolves.toBe(
+        'deep-commit'
+      );
+      expect(getTag).toHaveBeenCalledTimes(10);
+    });
+
+    it('fails fast on absurdly deep tag nesting', async () => {
+      const getTag = vi
+        .fn<
+          (parameters: { owner: string; repo: string; tag_sha: string }) => Promise<TagResponse>
+        >()
+        .mockResolvedValue(tagObject('another-tag-sha', 'tag'));
+
+      await expect(utils.resolveCommitSha(makeClient(getTag), 'o', 'r', 'tag-sha')).rejects.toThrow(
+        'Annotated tag tag-sha exceeds the maximum nesting depth of 10.'
+      );
+      expect(getTag).toHaveBeenCalledTimes(10);
     });
 
     it('rethrows non-404 API errors for the caller to classify', async () => {
-      const getTag = jest
-        .fn<(...args: unknown[]) => Promise<unknown>>()
+      const getTag = vi
+        .fn<
+          (parameters: { owner: string; repo: string; tag_sha: string }) => Promise<TagResponse>
+        >()
         .mockRejectedValueOnce({ status: 500, message: 'Internal Server Error' });
 
       await expect(
-        utils.resolveCommitSha(makeOctokit(getTag), 'o', 'r', 'tag-sha')
-      ).rejects.toEqual({ status: 500, message: 'Internal Server Error' });
+        utils.resolveCommitSha(makeClient(getTag), 'o', 'r', 'tag-sha')
+      ).rejects.toStrictEqual({ status: 500, message: 'Internal Server Error' });
     });
   });
 
   describe('ECS-REQ-019: sleep', () => {
-    afterEach(() => {
-      jest.useRealTimers();
-    });
-
     it('resolves only after the specified milliseconds', async () => {
-      jest.useFakeTimers();
-      let resolved = false;
-      void utils.sleep(1000).then(() => {
-        resolved = true;
-      });
+      vi.useFakeTimers();
+      const settled = vi.fn<() => void>();
+      void utils.sleep(1000).then(settled);
 
-      await jest.advanceTimersByTimeAsync(999);
-      expect(resolved).toBe(false);
-      await jest.advanceTimersByTimeAsync(1);
-      expect(resolved).toBe(true);
+      await vi.advanceTimersByTimeAsync(999);
+
+      expect(settled).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(settled).toHaveBeenCalledTimes(1);
     });
 
     it('clamps negative delays to zero', async () => {
-      jest.useFakeTimers();
-      let resolved = false;
-      void utils.sleep(-100).then(() => {
-        resolved = true;
-      });
+      vi.useFakeTimers();
+      const settled = vi.fn<() => void>();
+      void utils.sleep(-100).then(settled);
 
-      await jest.advanceTimersByTimeAsync(0);
-      expect(resolved).toBe(true);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(settled).toHaveBeenCalledTimes(1);
     });
 
     it('clamps delays above the setTimeout limit', async () => {
-      jest.useFakeTimers();
-      let resolved = false;
-      void utils.sleep(3000000000).then(() => {
-        resolved = true;
-      });
+      vi.useFakeTimers();
+      const settled = vi.fn<() => void>();
+      void utils.sleep(3_000_000_000).then(settled);
 
-      await jest.advanceTimersByTimeAsync(2147483647);
-      expect(resolved).toBe(true);
+      await vi.advanceTimersByTimeAsync(2_147_483_646);
+
+      expect(settled).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(settled).toHaveBeenCalledTimes(1);
     });
   });
 });

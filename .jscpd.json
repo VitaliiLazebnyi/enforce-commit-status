@@ -1,0 +1,10 @@
+{
+  "path": ["src", "script", "__tests__"],
+  "format": ["typescript"],
+  "minTokens": 50,
+  "threshold": 0,
+  "exitCode": 1,
+  "reporters": ["console"],
+  "absolute": false,
+  "gitignore": true
+}

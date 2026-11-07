@@ -1,0 +1,10 @@
+# typos configuration.
+[files]
+# Generated files, not prose of this repository: dist/ is the ncc bundle of src/ and node_modules/
+# (it carries the comments of third-party code; CI proves it is a clean rebuild of src/), and
+# package-lock.json is written by npm. Everything else is checked.
+extend-exclude = ["dist/", "package-lock.json"]
+
+[default.extend-identifiers]
+# Jest's/Vitest's disabled-test function, named by the suppression scanner's pattern.
+xdescribe = "xdescribe"

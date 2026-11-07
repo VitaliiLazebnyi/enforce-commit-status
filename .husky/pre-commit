@@ -1,9 +1,14 @@
+#!/usr/bin/env sh
+# Pre-commit hook (installed by `npm ci` through husky): the fast gates, then the bundle check.
+set -eu
+
 npm run lint
 npm run format:check
 npm run typecheck
+npm run suppressions
 npm test
 npm run build
 if ! git diff --quiet dist; then
-  echo "dist/ is out of date with src/. Review and stage the rebuilt dist/ before committing."
+  echo "dist/ is out of date with src/. Review and stage the rebuilt dist/ before committing." >&2
   exit 1
 fi

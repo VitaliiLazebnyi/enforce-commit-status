@@ -1,0 +1,6 @@
+# actionlint configuration.
+self-hosted-runner:
+  labels:
+    # GitHub-hosted Ubuntu 26.04 image (the newest one). It is not self-hosted: actionlint 1.7.12,
+    # the newest release, predates it and only knows the GitHub-hosted labels up to ubuntu-24.04.
+    - ubuntu-26.04

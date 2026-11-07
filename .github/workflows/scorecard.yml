@@ -2,43 +2,57 @@ name: OpenSSF Scorecard
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   schedule:
     - cron: '30 6 * * 1'
+  branch_protection_rule:
+  workflow_dispatch:
 
-# Scorecard's publish-results validation requires top-level read-only permissions.
-permissions: read-all
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   analysis:
-    runs-on: ubuntu-latest
+    name: Scorecard analysis
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     permissions:
-      # Needed to upload the results to the code-scanning dashboard.
-      security-events: write
-      # Needed to publish results and get a badge.
-      id-token: write
+      actions: read # Scorecard reads the workflow runs
       contents: read
-      actions: read
+      security-events: write # upload the SARIF results to code scanning
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
-      - name: Run Scorecard Analysis
-        uses: ossf/scorecard-action@99c09fe975337306107572b4fdf4db224cf8e2f2 # v2.4.3
+      - uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
         with:
           results_file: results.sarif
           results_format: sarif
-          # Publishing to the OpenSSF REST API (for the public badge) has
-          # strict workflow-validation requirements that reject this run;
-          # results still land in the repo's code-scanning dashboard via the
-          # SARIF upload below. Flip to true once the badge is wanted.
+          # Publishing to the OpenSSF REST API (for the public badge) is off; the results land in
+          # the repository's code-scanning dashboard through the SARIF upload below.
           publish_results: false
-
-      - name: Upload SARIF Results
-        uses: github/codeql-action/upload-sarif@bb16b9baa2ec4010b29f5c606d57d01190139edd # v4.37.1
+      - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: results.sarif
+
+  warning-gate:
+    name: Warning gate
+    if: ${{ !cancelled() }}
+    needs: [analysis]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      actions: read # reads the logs of the other jobs of this run
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Fail on any warning or deprecation in the logs of this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GATE_JOB_NAME: Warning gate
+        run: script/warning_gate.sh

@@ -1,0 +1,12 @@
+{
+  // Used only by Stryker's TypeScript checker, which type-checks every mutant: it covers the code
+  // under mutation and its tests. The library declarations and the tooling files are type-checked
+  // once by `npm run typecheck` (tsconfig.json); repeating that per mutant only costs time.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "allowJs": false,
+    "checkJs": false
+  },
+  "include": ["src/**/*", "types/**/*.d.ts", "__tests__/**/*"]
+}

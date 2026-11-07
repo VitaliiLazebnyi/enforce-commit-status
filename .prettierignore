@@ -1,9 +1,6 @@
-# Generated build output — never hand-formatted
+# Generated output — never hand-formatted
 dist/
 coverage/
-lib/
+reports/
 node_modules/
 package-lock.json
-
-# Generated review artifact
-CODE_REVIEW_REPORT.md

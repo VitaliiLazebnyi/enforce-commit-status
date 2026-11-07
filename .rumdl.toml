@@ -1,0 +1,6 @@
+# rumdl configuration (the markdownlint rules). Every other rule runs with its default settings.
+
+[MD013]
+# Line length: Prettier formats the Markdown (prose wraps at the reader's width, tables keep one row
+# per line), so a fixed line limit would only disagree with it.
+enabled = false

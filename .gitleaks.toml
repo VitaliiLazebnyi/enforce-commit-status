@@ -1,0 +1,13 @@
+# gitleaks configuration: the default rules, plus one documented false positive.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = """\
+  dist/ bundles @actions/core, whose JSDoc example for setSecret() reads \
+  `const apiToken = "abc123xyz456";`. That placeholder is documentation, not a credential. \
+  Only this exact value in the bundle is allowed; the same rule still fires anywhere else."""
+condition = "AND"
+paths = ['''^dist/index\.js$''']
+regexTarget = "secret"
+regexes = ['''^abc123xyz456$''']

@@ -1,15 +1,12 @@
-import { jest, describe, it, expect } from '@jest/globals';
+import { describe, expect, it, vi } from 'vitest';
+import { run } from '../src/action.js';
 
-const runMock = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
-
-jest.unstable_mockModule('../src/action.js', () => ({
-  run: runMock
-}));
+vi.mock('../src/action.js', () => ({ run: vi.fn(() => Promise.resolve()) }));
 
 describe('ECS-REQ-001: Action entrypoint', () => {
   it('invokes run() unconditionally on import', async () => {
     await import('../src/main.js');
 
-    expect(runMock).toHaveBeenCalledTimes(1);
+    expect(run).toHaveBeenCalledTimes(1);
   });
 });

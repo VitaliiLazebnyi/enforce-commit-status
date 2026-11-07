@@ -11,8 +11,8 @@ coverage/
 *.lcov
 
 # TypeScript output (dist/ is intentionally tracked)
-lib/
-build/
+/lib/
+/build/
 *.tsbuildinfo
 
 # Environment

@@ -1,5 +1,5 @@
 {
-  "$comment": "Inputs of script/outdated.ts. `holds` lists every dependency that is deliberately not at its newest release, with the reason; `npm run outdated` fails for any other outdated dependency and for a hold whose reason no longer applies. `tools` maps the version variables of the workflows to the GitHub repository whose newest release they must pin. Holds checked against the registries on 2026-11-07.",
+  "$comment": "Inputs of script/outdated.ts. `holds` lists every dependency that is deliberately not at its newest release, with the reason; `npm run outdated` fails for any other outdated dependency and for a hold whose reason no longer applies. The tools the workflows install are pinned in script/tools.json, the Python packages in script/python/requirements.txt. Holds checked against the registries on 2026-11-07.",
   "holds": {
     "node": {
       "allowedMajor": 24,
@@ -16,12 +16,5 @@
       "newestMajor": 7,
       "reason": "TypeScript 7 (the native port) ships no JavaScript compiler API. typescript-eslint 8.72.1 requires `typescript >=4.8.4 <6.1.0` and @stryker-mutator/typescript-checker uses the compiler API."
     }
-  },
-  "tools": {
-    "ACTIONLINT_VERSION": "rhysd/actionlint",
-    "GITLEAKS_VERSION": "gitleaks/gitleaks",
-    "RUMDL_VERSION": "rvben/rumdl",
-    "SHELLCHECK_VERSION": "koalaman/shellcheck",
-    "TYPOS_VERSION": "crate-ci/typos"
   }
 }

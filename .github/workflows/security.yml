@@ -1,12 +1,13 @@
+---
 name: Security
 
-on:
+'on':
   push:
     branches: [main]
   pull_request:
     branches: [main]
   schedule:
-    - cron: '17 4 * * 1'
+    - cron: 17 4 * * 1
   workflow_dispatch:
 
 permissions: {}
@@ -14,6 +15,9 @@ permissions: {}
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  NODE_OPTIONS: --throw-deprecation
 
 jobs:
   npm-audit:
@@ -23,21 +27,29 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-telemetry: true
+          allowed-endpoints: >-
+            api.github.com:443 github.com:443 nodejs.org:443 objects.githubusercontent.com:443
+            raw.githubusercontent.com:443 registry.npmjs.org:443
+            release-assets.githubusercontent.com:443
+            tuf-repo-cdn.sigstore.dev:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Verify lockfile registry integrity
-        run: |
-          if grep '"resolved":' package-lock.json | grep -v 'https://registry.npmjs.org/'; then
-            echo "package-lock.json contains resolved URLs outside registry.npmjs.org." >&2
-            exit 1
-          fi
-      - uses: ./.github/actions/setup
-      # Any known vulnerability, of any severity, in any dependency fails the job.
-      - name: npm audit
-        run: npm run audit
-      - name: Verify registry signatures and provenance attestations
-        run: npm audit signatures
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # No dependency cache: a poisoned cache must never reach a check or a release.
+          package-manager-cache: false
+          node-version-file: .node-version
+      - name: Install npm and the locked dependencies
+        run: script/setup_npm.sh
+      # Every package resolves to registry.npmjs.org, no dependency has a known vulnerability of any
+      # severity, and every registry signature and provenance attestation verifies.
+      - run: script/check audit
 
   scorecard:
     name: OpenSSF Scorecard of the dependencies
@@ -46,13 +58,28 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-telemetry: true
+          allowed-endpoints: >-
+            api.github.com:443 api.scorecard.dev:443 github.com:443 nodejs.org:443
+            objects.githubusercontent.com:443 raw.githubusercontent.com:443 registry.npmjs.org:443
+            release-assets.githubusercontent.com:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/setup
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # No dependency cache: a poisoned cache must never reach a check or a release.
+          package-manager-cache: false
+          node-version-file: .node-version
+      - name: Install npm and the locked dependencies
+        run: script/setup_npm.sh
       # Every package of package-lock.json must come from a repository scoring at least the
       # threshold of script/scorecard.json, unless that file allows it with a reason.
-      - run: npm run scorecard
+      - run: script/check scorecard
 
   # Requires the repository's Dependency graph to be enabled (Settings > Code security).
   dependency-review:
@@ -64,17 +91,27 @@ jobs:
       contents: read
       pull-requests: write # post the dependency review summary on the pull request
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-telemetry: true
+          allowed-endpoints: >-
+            api.github.com:443 github.com:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
+          # Any known vulnerability, of any severity, in any kind of dependency (runtime,
+          # development or of unknown scope) fails the review.
           fail-on-severity: low
+          fail-on-scopes: runtime, development, unknown
           comment-summary-in-pr: on-failure
-          # The OpenSSF Scorecard check of the dependencies is the `scorecard` job above: this action
-          # can only warn on every package under one global threshold, while that job applies the
-          # same threshold to the whole dependency tree with documented per-package allowances
-          # (script/scorecard.json).
+          # The OpenSSF Scorecard check of the dependencies is the `scorecard` job above: this
+          # action can only warn on every package under one global threshold, while that job
+          # applies the same threshold to the whole dependency tree with documented per-package
+          # allowances (script/scorecard.json).
           show-openssf-scorecard: false
 
   gitleaks:
@@ -84,25 +121,22 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-telemetry: true
+          allowed-endpoints: >-
+            github.com:443 objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-      # The pinned release binary is run directly: the gitleaks action still runs on a deprecated
-      # Node.js version and logs deprecation warnings. The archive is verified against its published
-      # SHA-256 first.
-      - name: Install gitleaks
-        env:
-          GITLEAKS_VERSION: 8.30.1
-          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb # gitleaks_8.30.1_linux_x64.tar.gz
-        run: |
-          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$archive" \
-            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$archive"
-          echo "$GITLEAKS_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
-          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
-      - name: Scan the full history for secrets
-        run: '"$RUNNER_TEMP/gitleaks" git --redact --verbose --exit-code 1 .'
+      - name: Install the pinned tools
+        run: script/install_tools.sh gitleaks
+      # The full history, not only the checked-out tree.
+      - run: script/check gitleaks
 
   warning-gate:
     name: Warning gate
@@ -114,6 +148,14 @@ jobs:
       actions: read # reads the logs of the other jobs of this run
       contents: read
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-telemetry: true
+          allowed-endpoints: >-
+            *.actions.githubusercontent.com:443 *.blob.core.windows.net:443 api.github.com:443
+            github.com:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false

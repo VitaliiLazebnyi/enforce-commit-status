@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# Runs the checks of this repository. CI runs every check through this script (each job names the
+# checks it runs), so a local `script/check` runs exactly what CI runs.
+#
+# Usage: script/check [check...]   (no argument: every check, in the order below)
+#
+# The npm-based checks need `npm ci`. The other checks run the tools of script/tools.json and
+# yamllint (script/python/requirements.txt) from the PATH; script/install_tools.sh installs them on
+# Linux x86-64, and on other platforms each tool's own release or package manager provides the same
+# version. zizmor runs its online audits when GH_TOKEN is set.
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+all_checks=(
+  eslint prettier typecheck suppressions knip duplication test dist mutation outdated audit
+  scorecard typos markdown yaml editorconfig actionlint shellcheck shfmt zizmor gitleaks
+)
+# The shell scripts of the repository (ShellCheck and shfmt).
+shell_files=(script/*.sh script/check .husky/pre-commit)
+# ShellCheck at its strictest: every optional check, every severity.
+shellcheck_options=(--enable=all --severity=style)
+
+check_eslint() { npm run lint; }
+check_prettier() { npm run format:check; }
+check_typecheck() { npm run typecheck; }
+check_suppressions() { script/forbidden_suppressions.sh; }
+check_duplication() { npm run duplication; }
+check_test() { npm test; }
+check_mutation() { npm run mutation; }
+check_outdated() { npm run outdated; }
+check_scorecard() { npm run scorecard; }
+check_typos() { typos; }
+check_markdown() { rumdl check .; }
+check_yaml() { yamllint --strict .; }
+check_editorconfig() { editorconfig-checker; }
+check_shellcheck() { shellcheck "${shellcheck_options[@]}" "${shell_files[@]}"; }
+check_shfmt() { shfmt --diff "${shell_files[@]}"; }
+check_zizmor() { zizmor --persona=pedantic .; }
+check_gitleaks() { gitleaks git --redact --verbose --exit-code 1 .; }
+
+# knip: no unused file, export or dependency; then the production code alone, where every
+# dependency must be a production dependency.
+check_knip() {
+  npm run knip
+  npm run knip -- --production --strict
+}
+
+# The committed dist/ must be a byte-identical rebuild of src/, and the bundle must run: with an
+# invalid token the action fails closed (exit 1) with an ::error annotation, where a no-op bundle
+# would exit 0 without output.
+check_dist() {
+  npm run build
+  local untracked
+  untracked=$(git ls-files --others --exclude-standard -- dist)
+  if ! git diff --quiet -- dist || [[ -n ${untracked} ]]; then
+    echo "dist/ is out of date: run 'npm run build' and commit the result." >&2
+    git status -- dist
+    return 1
+  fi
+
+  local commit output status=0
+  commit=$(git rev-parse HEAD)
+  output=$(env "INPUT_WORKFLOW-ID=ci.yml" "INPUT_GITHUB-TOKEN=smoke-test-invalid-token" \
+    "INPUT_COMMIT-SHA=${commit}" "INPUT_POLL-INTERVAL=10s" "INPUT_TIMEOUT=30s" \
+    node dist/index.js 2>&1) || status=$?
+  echo "${output}"
+  if [[ ${status} -eq 0 ]]; then
+    echo "The bundle exited 0 with an invalid token (fail-open)." >&2
+    return 1
+  fi
+  if ! grep -q '::error::' <<<"${output}"; then
+    echo "The bundle produced no ::error output; run() may not have executed." >&2
+    return 1
+  fi
+  echo "The bundle executed run() and failed closed as expected."
+}
+
+# Every package resolves to the npm registry, has no known vulnerability of any severity, and
+# carries a valid registry signature (and provenance attestation where one is published).
+check_audit() {
+  if grep '"resolved":' package-lock.json | grep -v '"https://registry.npmjs.org/'; then
+    echo "package-lock.json resolves packages outside registry.npmjs.org." >&2
+    return 1
+  fi
+  npm run audit
+  npm audit signatures
+}
+
+# actionlint runs ShellCheck (with the options above) on every run: block of the workflows.
+check_actionlint() {
+  SHELLCHECK_OPTS="${shellcheck_options[*]}" actionlint -color -shellcheck shellcheck
+}
+
+if [[ $# -eq 0 ]]; then
+  set -- "${all_checks[@]}"
+fi
+for name in "$@"; do
+  if [[ " ${all_checks[*]} " != *" ${name} "* ]]; then
+    echo "Unknown check '${name}'. Checks: ${all_checks[*]}" >&2
+    exit 2
+  fi
+done
+for name in "$@"; do
+  echo "==> ${name}"
+  "check_${name}"
+done

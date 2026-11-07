@@ -1,38 +1,52 @@
-name: 'Enforce Commit Status'
-description: 'Synchronous gatekeeper action; suspends build runner pending definitive test resolution.'
-author: 'Vitalii Lazebnyi'
+---
+name: Enforce Commit Status
+description: >-
+  Synchronous gatekeeper action; suspends build runner pending definitive test resolution.
+author: Vitalii Lazebnyi
 
 branding:
-  icon: 'watch'
-  color: 'green'
+  icon: watch
+  color: green
 
 inputs:
   workflow-id:
-    description: 'Filename or ID of the Tests workflow (e.g., tests.yml).'
+    description: Filename or ID of the Tests workflow (e.g., tests.yml).
     required: true
   commit-sha:
-    description: 'Target Commit SHA (full 40- or 64-character hash). Annotated tags are automatically resolved to their underlying commit.'
+    description: >-
+      Target Commit SHA (full 40- or 64-character hash). Annotated tags are automatically resolved
+      to their underlying commit.
     required: false
-    default: '${{ github.sha }}'
+    default: ${{ github.sha }}
   github-token:
-    description: 'Authentication token for the Actions API. Requires actions:read (and contents:read for annotated-tag resolution).'
+    description: >-
+      Authentication token for the Actions API. Requires actions:read (and contents:read for
+      annotated-tag resolution).
     required: false
-    default: '${{ github.token }}'
+    default: ${{ github.token }}
   poll-interval:
-    description: 'Polling frequency. Accepts duration strings (e.g., 10s, 1m). Minimum: 10s (lower values are clamped with a warning).'
+    description: >-
+      Polling frequency. Accepts duration strings (e.g., 10s, 1m). Minimum: 10s (lower values are
+      clamped with a warning).
     required: false
-    default: '15s'
+    default: 15s
   timeout:
-    description: 'Maximum suspension duration before failing the step. Accepts duration strings (e.g., 45m, 2h). Invalid or non-positive values fail the action.'
+    description: >-
+      Maximum suspension duration before failing the step. Accepts duration strings (e.g., 45m, 2h).
+      Invalid or non-positive values fail the action.
     required: false
-    default: '1h'
+    default: 1h
 
 outputs:
   final-status:
-    description: 'Resolved conclusion: success, failure, timeout, or error (the action itself failed before reaching a verdict).'
+    description: >-
+      Resolved conclusion: success, failure, timeout, or error (the action itself failed before
+      reaching a verdict).
   run-url:
-    description: 'HTML URL of the matched test run. Also set on timeout when a run was observed; empty if no run was ever matched.'
+    description: >-
+      HTML URL of the matched test run. Also set on timeout when a run was observed; empty if no run
+      was ever matched.
 
 runs:
-  using: 'node24'
-  main: 'dist/index.js'
+  using: node24
+  main: dist/index.js

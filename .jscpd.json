@@ -1,5 +1,5 @@
 {
-  "path": ["src", "script", "__tests__"],
+  "path": ["src", "script", "test", "eslint"],
   "format": ["typescript"],
   "minTokens": 50,
   "threshold": 0,

@@ -1,0 +1,32 @@
+# EditorConfig: the whitespace rules of every file, checked by editorconfig-checker (script/check).
+# Prettier and shfmt read the same settings.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# shfmt (script/check shfmt) formats the shell scripts with these options (and the indentation
+# above), and simplifies them.
+[{*.sh,check,pre-commit}]
+binary_next_line = true
+switch_case_indent = true
+simplify = true
+
+# rumdl checks the Markdown line length (MD013 in .rumdl.toml): it knows that a link reference
+# definition cannot be wrapped, which editorconfig-checker does not.
+# Markdown nests by the width of the list marker (three spaces under `1. `), which rumdl checks too
+# (MD005, MD007, MD077).
+[*.md]
+max_line_length = off
+indent_size = unset
+
+# JSON has neither comments nor line continuations: a long string (a `$comment`, a URL, an
+# integrity hash) cannot be wrapped. Every other file type keeps the 100-character limit.
+[*.json]
+max_line_length = off

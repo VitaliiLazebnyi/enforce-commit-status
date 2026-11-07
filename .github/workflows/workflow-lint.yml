@@ -1,6 +1,7 @@
+---
 name: Workflow lint
 
-on:
+'on':
   push:
     branches: [main]
   pull_request:
@@ -15,41 +16,28 @@ concurrency:
 
 jobs:
   actionlint:
-    name: actionlint and ShellCheck
+    name: actionlint, ShellCheck and shfmt
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: read
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-telemetry: true
+          allowed-endpoints: >-
+            github.com:443 objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # Both archives are verified against their SHA-256 before they are run.
-      - name: Install ShellCheck
-        env:
-          SHELLCHECK_VERSION: 0.11.0
-          SHELLCHECK_SHA256: 8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198 # shellcheck-v0.11.0.linux.x86_64.tar.xz
-        run: |
-          archive="shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
-          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$archive" \
-            "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/$archive"
-          echo "$SHELLCHECK_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
-          tar -xJf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" --strip-components=1 "shellcheck-v${SHELLCHECK_VERSION}/shellcheck"
-      - name: Install actionlint
-        env:
-          ACTIONLINT_VERSION: 1.7.12
-          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8 # actionlint_1.7.12_linux_amd64.tar.gz
-        run: |
-          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
-          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$archive" \
-            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/$archive"
-          echo "$ACTIONLINT_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
-          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
-      # actionlint also runs ShellCheck on every run: block of the workflows.
-      - name: actionlint
-        run: '"$RUNNER_TEMP/actionlint" -color -shellcheck "$RUNNER_TEMP/shellcheck"'
-      - name: ShellCheck the scripts and the pre-commit hook
-        run: '"$RUNNER_TEMP/shellcheck" --enable=all script/*.sh .husky/pre-commit'
+      - name: Install the pinned tools
+        run: script/install_tools.sh actionlint shellcheck shfmt
+      # actionlint runs ShellCheck, with every optional check, on every run: block of the workflows;
+      # the scripts and the pre-commit hook are checked directly.
+      - run: script/check actionlint shellcheck shfmt
 
   zizmor:
     name: zizmor
@@ -58,13 +46,25 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-telemetry: true
+          allowed-endpoints: >-
+            api.github.com:443 github.com:443 objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
-        with:
-          advanced-security: false
-          persona: pedantic
+      - name: Install the pinned tools
+        run: script/install_tools.sh zizmor
+      # The pedantic persona with the online audits (impostor commits, ref confusion, known
+      # vulnerable actions), which read the GitHub API with the job's read-only token.
+      - name: zizmor
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: script/check zizmor
 
   warning-gate:
     name: Warning gate
@@ -76,6 +76,14 @@ jobs:
       actions: read # reads the logs of the other jobs of this run
       contents: read
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-telemetry: true
+          allowed-endpoints: >-
+            *.actions.githubusercontent.com:443 *.blob.core.windows.net:443 api.github.com:443
+            github.com:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false

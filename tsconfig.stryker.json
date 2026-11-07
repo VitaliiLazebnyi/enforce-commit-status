@@ -8,5 +8,5 @@
     "allowJs": false,
     "checkJs": false
   },
-  "include": ["src/**/*", "types/**/*.d.ts", "__tests__/**/*"]
+  "include": ["src/**/*", "types/**/*.d.ts", "test/**/*"]
 }

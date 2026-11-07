@@ -1,11 +1,12 @@
+---
 name: Release
 
-# Verifies that the commit a release tag points to passes every gate and contains a dist/ bundle
-# byte-identical to a clean rebuild from that commit's source, then publishes a GitHub release.
-on:
+# Verifies that the commit a release tag points to passes every check of script/check (including
+# mutation testing and the byte-identical rebuild of dist/), then publishes a GitHub release.
+'on':
   push:
     tags:
-      - 'v*'
+      - v*
 
 permissions: {}
 
@@ -25,21 +26,36 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-telemetry: true
+          allowed-endpoints: >-
+            api.github.com:443 api.scorecard.dev:443 files.pythonhosted.org:443 github.com:443
+            nodejs.org:443 objects.githubusercontent.com:443 pypi.org:443
+            raw.githubusercontent.com:443 registry.npmjs.org:443
+            release-assets.githubusercontent.com:443
+            tuf-repo-cdn.sigstore.dev:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
-      # No dependency cache in the release pipeline: a poisoned cache must never reach a release.
-      - uses: ./.github/actions/setup
-      - run: npm run check
-      - run: npm run mutation
-      - name: Rebuild and verify dist/
-        run: |
-          npm run build
-          if [[ -n "$(git status --porcelain)" ]]; then
-            echo "Tagged dist/ does not match a clean rebuild of the tagged source." >&2
-            git status
-            exit 1
-          fi
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # No dependency cache: a poisoned cache must never reach a check or a release.
+          package-manager-cache: false
+          node-version-file: .node-version
+      - name: Install npm and the locked dependencies
+        run: script/setup_npm.sh
+      - name: Install the pinned tools
+        run: >-
+          script/install_tools.sh actionlint editorconfig-checker gitleaks rumdl shellcheck shfmt
+          typos yamllint zizmor
+      - name: Every check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: script/check
 
   release:
     name: Publish the GitHub release
@@ -49,6 +65,13 @@ jobs:
     permissions:
       contents: write # create the GitHub release for the verified tag
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-telemetry: true
+          allowed-endpoints: >-
+            api.github.com:443 github.com:443 uploads.github.com:443
       - name: Create the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -70,6 +93,14 @@ jobs:
       actions: read # reads the logs of the other jobs of this run
       contents: read
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-telemetry: true
+          allowed-endpoints: >-
+            *.actions.githubusercontent.com:443 *.blob.core.windows.net:443 api.github.com:443
+            github.com:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false

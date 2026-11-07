@@ -1,0 +1,4 @@
+{
+  "$comment": "editorconfig-checker checks every file against .editorconfig, except dist/: the bundle that ncc generates from src/ and node_modules/ (CI proves it is a clean rebuild of src/).",
+  "Exclude": ["^dist/"]
+}

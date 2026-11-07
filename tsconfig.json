@@ -3,7 +3,7 @@
     "target": "ES2025",
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "lib": ["es2025"],
+    "lib": ["es2025", "esnext.error"],
     "types": ["node"],
     "noEmit": true,
     "allowJs": true,
@@ -23,6 +23,7 @@
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true,
+    "rewriteRelativeImportExtensions": true,
     "isolatedModules": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -31,10 +32,10 @@
   "include": [
     "src/**/*",
     "types/**/*.d.ts",
-    "__tests__/**/*",
+    "test/**/*",
     "script/**/*.ts",
     "*.config.ts",
-    "*.config.js",
+    "eslint/**/*.ts",
     "*.config.mjs"
   ]
 }

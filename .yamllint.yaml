@@ -1,0 +1,39 @@
+---
+# yamllint configuration (script/check runs `yamllint --strict`, so warnings fail too). Every rule
+# of the default configuration is on, and so is every rule it leaves off, except key-ordering.
+#
+# key-ordering (alphabetical keys) is off: the files are GitHub Actions workflows and action
+# metadata and the Dependabot configuration, whose keys have a documented reading order. Sorted, a
+# workflow would list its jobs before its name and triggers, a step its `env` before its `name`, and
+# dependabot.yml its `version` last.
+extends: default
+
+ignore-from-file: .gitignore
+
+rules:
+  anchors:
+    forbid-undeclared-aliases: true
+    forbid-duplicated-anchors: true
+    forbid-unused-anchors: true
+  comments:
+    # Prettier writes one space between a value and its comment.
+    min-spaces-from-content: 1
+  float-values:
+    forbid-inf: true
+    forbid-nan: true
+    forbid-scientific-notation: true
+    require-numeral-before-decimal: true
+  line-length:
+    # The width of the other file types (.editorconfig, Prettier printWidth).
+    max: 100
+    allow-non-breakable-words: false
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
+  quoted-strings:
+    # Prettier's quote style (.prettierrc singleQuote); quotes only where YAML needs them.
+    quote-type: single
+    required: only-when-needed
+  truthy:
+    # GitHub Actions' `on:` key is written quoted, as a string.
+    check-keys: true

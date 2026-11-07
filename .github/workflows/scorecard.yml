@@ -1,10 +1,11 @@
+---
 name: OpenSSF Scorecard
 
-on:
+'on':
   push:
     branches: [main]
   schedule:
-    - cron: '30 6 * * 1'
+    - cron: 30 6 * * 1
   branch_protection_rule:
   workflow_dispatch:
 
@@ -24,6 +25,17 @@ jobs:
       contents: read
       security-events: write # upload the SARIF results to code scanning
     steps:
+      # The Scorecard action is a Docker container action, so containers stay enabled here.
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-telemetry: true
+          allowed-endpoints: >-
+            api.deps.dev:443 api.github.com:443 api.osv.dev:443 api.scorecard.dev:443
+            api.securityscorecards.dev:443 github.com:443
+            oss-fuzz-build-logs.storage.googleapis.com:443 uploads.github.com:443
+            www.bestpractices.dev:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -35,13 +47,14 @@ jobs:
           # the repository's code-scanning dashboard through the SARIF upload below.
           publish_results: false
       - name: Give repository-level findings a valid location
-        # Scorecard reports findings about the whole repository (Branch-Protection, Code-Review, Fuzzing,
-        # ...) under the placeholder URI "no file associated with this alert", which upload-sarif rejects
-        # with a warning. Point them at this workflow, the file that produces them.
+        # Scorecard reports findings about the whole repository (Branch-Protection, Code-Review,
+        # Fuzzing, ...) under the placeholder URI "no file associated with this alert", which
+        # upload-sarif rejects with a warning. Point them at this workflow, the file that produces
+        # them.
         run: |
           jq '(.runs[].results[]?.locations[]?.physicalLocation.artifactLocation
-            | select(.uri == "no file associated with this alert")).uri = ".github/workflows/scorecard.yml"' \
-            results.sarif > results.located.sarif
+            | select(.uri == "no file associated with this alert")).uri
+            = ".github/workflows/scorecard.yml"' results.sarif > results.located.sarif
           mv results.located.sarif results.sarif
       - uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
@@ -57,6 +70,15 @@ jobs:
       actions: read # reads the logs of the other jobs of this run
       contents: read
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-sudo-and-containers: true
+          disable-telemetry: true
+          allowed-endpoints: >-
+            *.actions.githubusercontent.com:443 *.blob.core.windows.net:443 api.github.com:443
+            github.com:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false

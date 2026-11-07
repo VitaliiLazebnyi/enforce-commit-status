@@ -1,0 +1,60 @@
+{
+  "$comment": "The standalone release binaries the checks run (script/check), for Linux x86-64. script/install_tools.sh downloads `asset` (with {version} substituted) of the GitHub release v{version} of `repository`, verifies its SHA-256 and installs `member` of the archive (or the asset itself) under the tool's name. script/outdated.ts fails when `version` is not the newest release of `repository`.",
+  "tools": {
+    "actionlint": {
+      "repository": "rhysd/actionlint",
+      "version": "1.7.12",
+      "asset": "actionlint_{version}_linux_amd64.tar.gz",
+      "sha256": "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8",
+      "member": "actionlint"
+    },
+    "editorconfig-checker": {
+      "repository": "editorconfig-checker/editorconfig-checker",
+      "version": "4.0.2",
+      "asset": "editorconfig-checker-linux-amd64.tar.gz",
+      "sha256": "44efaef3ed14c6ab52eb87481d78e5e5c204796dccf26e2f4598a61ba17f8003",
+      "member": "editorconfig-checker"
+    },
+    "gitleaks": {
+      "repository": "gitleaks/gitleaks",
+      "version": "8.30.1",
+      "asset": "gitleaks_{version}_linux_x64.tar.gz",
+      "sha256": "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb",
+      "member": "gitleaks"
+    },
+    "rumdl": {
+      "repository": "rvben/rumdl",
+      "version": "0.3.2",
+      "asset": "rumdl-v{version}-x86_64-unknown-linux-musl.tar.gz",
+      "sha256": "395c4061041c5a25301c7b3564a93c4a661ed4df93427a77b6fc9e426ec8a13a",
+      "member": "rumdl"
+    },
+    "shellcheck": {
+      "repository": "koalaman/shellcheck",
+      "version": "0.11.0",
+      "asset": "shellcheck-v{version}.linux.x86_64.tar.xz",
+      "sha256": "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198",
+      "member": "shellcheck-v{version}/shellcheck"
+    },
+    "shfmt": {
+      "repository": "mvdan/sh",
+      "version": "3.14.1",
+      "asset": "shfmt_v{version}_linux_amd64",
+      "sha256": "76e77641faa025814b77f153b29796b8e6fa2fca03e0c76a691608b86c7ea7bf"
+    },
+    "typos": {
+      "repository": "crate-ci/typos",
+      "version": "1.52.0",
+      "asset": "typos-v{version}-x86_64-unknown-linux-musl.tar.gz",
+      "sha256": "6155d4114f9a0f5b8f6d4fda96266c9d5f6add71df80da7f684ee5e72eb14588",
+      "member": "./typos"
+    },
+    "zizmor": {
+      "repository": "zizmorcore/zizmor",
+      "version": "1.32.0",
+      "asset": "zizmor-x86_64-unknown-linux-gnu.tar.gz",
+      "sha256": "bb110cc765eca9cd7efb2e284a956be5974c60027b0970f16397d86208a9957b",
+      "member": "zizmor"
+    }
+  }
+}

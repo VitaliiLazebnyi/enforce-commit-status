@@ -1,6 +1,55 @@
-# rumdl configuration (the markdownlint rules). Every other rule runs with its default settings.
+# rumdl configuration: every rule of markdownlint, plus rumdl's own, at its strictest. The rules
+# that rumdl leaves off by default are switched on, and the configurable ones are configured.
+
+[global]
+# Generated Markdown (coverage and mutation reports) is not checked.
+exclude = ["coverage", "reports", "node_modules", "dist"]
 
 [MD013]
-# Line length: Prettier formats the Markdown (prose wraps at the reader's width, tables keep one row
-# per line), so a fixed line limit would only disagree with it.
-enabled = false
+# The width of the other file types (.editorconfig max_line_length, Prettier printWidth); prose is
+# wrapped by hand (Prettier preserves the line breaks).
+line-length = 100
+code-blocks = true
+headings = true
+tables = true
+# No exception for long link URLs: a long URL goes into a link reference definition.
+strict = true
+
+[MD044]
+# Proper names are written with their correct capitalization (outside code).
+names = [
+  "CodeQL",
+  "ESLint",
+  "GitHub",
+  "GitHub Actions",
+  "JavaScript",
+  "Node.js",
+  "OpenSSF",
+  "Prettier",
+  "ShellCheck",
+  "Stryker",
+  "TypeScript",
+  "Vitest",
+  "YAML",
+]
+
+[MD060]
+enabled = true
+# Prettier pads every table column to the same width.
+style = "aligned"
+
+[MD061]
+# Unfinished work is tracked in issues, not in the documentation.
+terms = ["TODO", "FIXME", "XXX", "TBD"]
+
+[MD063]
+enabled = true
+
+[MD072]
+enabled = true
+
+[MD073]
+enabled = true
+
+[MD096]
+enabled = true

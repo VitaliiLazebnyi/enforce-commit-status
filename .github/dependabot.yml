@@ -1,7 +1,8 @@
+---
 version: 2
 updates:
   - package-ecosystem: npm
-    directory: '/'
+    directory: /
     schedule:
       interval: weekly
     # A release must have been public for a week before it is proposed.
@@ -13,12 +14,20 @@ updates:
     # The documented holds of script/outdated.json (the reasons are there).
     ignore:
       - dependency-name: '@types/node'
-        update-types: ['version-update:semver-major']
-      - dependency-name: 'typescript'
-        update-types: ['version-update:semver-major']
+        update-types: [version-update:semver-major]
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
-    directories: ['/', '/.github/actions/*']
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+
+  # yamllint and its dependencies (script/python/requirements.txt, pinned with hashes).
+  - package-ecosystem: pip
+    directory: /script/python
     schedule:
       interval: weekly
     cooldown:

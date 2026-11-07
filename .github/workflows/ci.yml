@@ -1,6 +1,7 @@
+---
 name: CI
 
-on:
+'on':
   push:
     branches: [main]
   pull_request:
@@ -18,6 +19,8 @@ env:
   # Deprecations of Node.js APIs fail the process that hits them.
   NODE_OPTIONS: --throw-deprecation
 
+# Every job runs its checks through script/check, the same script a local run uses. Each job blocks
+# all network egress except the endpoints it lists (step-security/harden-runner).
 jobs:
   test:
     name: Tests (Node.js ${{ matrix.node-version || 'runtime' }})
@@ -32,68 +35,63 @@ jobs:
           # The Node.js 24 of .node-version: the action's node24 runtime.
           - node-version: ''
           # The newest Node.js release.
-          - node-version: '26.13.0'
+          - node-version: 26.13.0
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-sudo-and-containers: true
+          disable-telemetry: true
+          allowed-endpoints: >-
+            api.github.com:443 github.com:443 nodejs.org:443 objects.githubusercontent.com:443
+            raw.githubusercontent.com:443 registry.npmjs.org:443
+            release-assets.githubusercontent.com:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/setup
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
+          # No dependency cache: a poisoned cache must never reach a check or a release.
+          package-manager-cache: false
           node-version: ${{ matrix.node-version }}
+          node-version-file: ${{ matrix.node-version == '' && '.node-version' || '' }}
+      - name: Install npm and the locked dependencies
+        env:
+          NODE_VERSION: ${{ matrix.node-version }}
+        run: script/setup_npm.sh ${NODE_VERSION:+"${NODE_VERSION}"}
       # Vitest enforces 100% line, branch, function and statement coverage; any Node.js process
-      # warning fails the run (__tests__/setup/warnings-as-errors.ts).
-      - run: npm test
+      # warning fails the run (test/setup/warnings-as-errors.ts).
+      - run: script/check test
 
   lint:
-    name: Lint, format, suppressions, docs, duplication
+    name: Lint, format, suppressions, unused code, duplication
     runs-on: ubuntu-26.04
     timeout-minutes: 15
     permissions:
       contents: read
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-sudo-and-containers: true
+          disable-telemetry: true
+          allowed-endpoints: >-
+            api.github.com:443 github.com:443 nodejs.org:443 objects.githubusercontent.com:443
+            raw.githubusercontent.com:443 registry.npmjs.org:443
+            release-assets.githubusercontent.com:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/setup
-      - name: ESLint (zero warnings)
-        run: npm run lint
-      - name: Prettier
-        run: npm run format:check
-      - name: Forbid inline suppressions
-        run: script/forbidden_suppressions.sh
-      - name: knip (unused files, exports and dependencies)
-        run: npm run knip
-      - name: jscpd (duplicated code)
-        run: npm run duplication
-
-      # The archive is verified against its SHA-256 before it is run.
-      - name: Install typos
-        env:
-          TYPOS_VERSION: 1.52.0
-          TYPOS_SHA256: 6155d4114f9a0f5b8f6d4fda96266c9d5f6add71df80da7f684ee5e72eb14588 # typos-v1.52.0-x86_64-unknown-linux-musl.tar.gz
-        run: |
-          archive="typos-v${TYPOS_VERSION}-x86_64-unknown-linux-musl.tar.gz"
-          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$archive" \
-            "https://github.com/crate-ci/typos/releases/download/v${TYPOS_VERSION}/$archive"
-          echo "$TYPOS_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
-          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" ./typos
-      - name: typos
-        run: '"$RUNNER_TEMP/typos"'
-
-      # rumdl implements the markdownlint rules as a standalone binary, so the Markdown linter
-      # adds no npm dependencies. The archive is verified against its published SHA-256.
-      - name: Install rumdl
-        env:
-          RUMDL_VERSION: 0.3.2
-          RUMDL_SHA256: 395c4061041c5a25301c7b3564a93c4a661ed4df93427a77b6fc9e426ec8a13a # rumdl-v0.3.2-x86_64-unknown-linux-musl.tar.gz
-        run: |
-          archive="rumdl-v${RUMDL_VERSION}-x86_64-unknown-linux-musl.tar.gz"
-          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$archive" \
-            "https://github.com/rvben/rumdl/releases/download/v${RUMDL_VERSION}/$archive"
-          echo "$RUMDL_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
-          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" rumdl
-      - name: rumdl (Markdown)
-        run: '"$RUNNER_TEMP/rumdl" check .'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # No dependency cache: a poisoned cache must never reach a check or a release.
+          package-manager-cache: false
+          node-version-file: .node-version
+      - name: Install npm and the locked dependencies
+        run: script/setup_npm.sh
+      - run: script/check eslint prettier suppressions knip duplication
 
   typecheck:
     name: TypeScript (strict)
@@ -102,11 +100,27 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-sudo-and-containers: true
+          disable-telemetry: true
+          allowed-endpoints: >-
+            api.github.com:443 github.com:443 nodejs.org:443 objects.githubusercontent.com:443
+            raw.githubusercontent.com:443 registry.npmjs.org:443
+            release-assets.githubusercontent.com:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/setup
-      - run: npm run typecheck
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # No dependency cache: a poisoned cache must never reach a check or a release.
+          package-manager-cache: false
+          node-version-file: .node-version
+      - name: Install npm and the locked dependencies
+        run: script/setup_npm.sh
+      - run: script/check typecheck
 
   dist:
     name: dist/ is a clean rebuild of src/
@@ -115,46 +129,32 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-sudo-and-containers: true
+          disable-telemetry: true
+          allowed-endpoints: >-
+            api.github.com:443 github.com:443 nodejs.org:443 objects.githubusercontent.com:443
+            raw.githubusercontent.com:443 registry.npmjs.org:443
+            release-assets.githubusercontent.com:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/setup
-      - run: npm run build
-      - name: Fail if the committed dist/ differs from the rebuild
-        run: |
-          if [[ -n "$(git status --porcelain)" ]]; then
-            echo "dist/ is out of date: run 'npm run build' and commit the result." >&2
-            git status
-            git diff --stat
-            exit 1
-          fi
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # No dependency cache: a poisoned cache must never reach a check or a release.
+          package-manager-cache: false
+          node-version-file: .node-version
+      - name: Install npm and the locked dependencies
+        run: script/setup_npm.sh
+      # Rebuilds dist/, fails when it differs from the committed bundle, then runs the bundle: with
+      # an invalid token it must fail closed with an ::error annotation.
+      - run: script/check dist
 
-      - name: Smoke test the packaged action
-        # Proves the committed bundle actually executes run(): with an invalid
-        # token the action must fail (exit 1) and emit an ::error annotation.
-        # A fail-open no-op bundle would exit 0 with no output.
-        run: |
-          set +e
-          output=$(env "INPUT_WORKFLOW-ID=ci.yml" \
-                       "INPUT_GITHUB-TOKEN=smoke-test-invalid-token" \
-                       "INPUT_COMMIT-SHA=${GITHUB_SHA}" \
-                       "INPUT_POLL-INTERVAL=10s" \
-                       "INPUT_TIMEOUT=30s" \
-                       node dist/index.js 2>&1)
-          status=$?
-          echo "$output"
-          if [[ "$status" -eq 0 ]]; then
-            echo "FAIL: bundle exited 0 with an invalid token (fail-open)."
-            exit 1
-          fi
-          if ! grep -q '::error::' <<<"$output"; then
-            echo "FAIL: bundle produced no ::error output; run() may not have executed."
-            exit 1
-          fi
-          echo "OK: bundle executed run() and failed closed as expected."
-
-  # Every dependency must be at its newest release, except the documented holds of
-  # script/outdated.json, which state why each one is held.
+  # Every dependency, Action and tool must be at its newest release, except the documented holds
+  # of script/outdated.json, which state why each one is held.
   outdated:
     name: Outdated dependencies
     runs-on: ubuntu-26.04
@@ -162,22 +162,71 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-sudo-and-containers: true
+          disable-telemetry: true
+          allowed-endpoints: >-
+            api.github.com:443 github.com:443 nodejs.org:443 objects.githubusercontent.com:443
+            pypi.org:443 raw.githubusercontent.com:443 registry.npmjs.org:443
+            release-assets.githubusercontent.com:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/setup
-      - run: npm run outdated
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # No dependency cache: a poisoned cache must never reach a check or a release.
+          package-manager-cache: false
+          node-version-file: .node-version
+      - name: Install npm and the locked dependencies
+        run: script/setup_npm.sh
+      - run: script/check outdated
+
+  # Spelling, Markdown, YAML and EditorConfig: every text file of the repository.
+  text:
+    name: Spelling, Markdown, YAML, EditorConfig
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-sudo-and-containers: true
+          disable-telemetry: true
+          allowed-endpoints: >-
+            files.pythonhosted.org:443 github.com:443 objects.githubusercontent.com:443 pypi.org:443
+            release-assets.githubusercontent.com:443
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the pinned tools
+        run: script/install_tools.sh typos rumdl yamllint editorconfig-checker
+      - run: script/check typos markdown yaml editorconfig
 
   warning-gate:
     name: Warning gate
     if: ${{ !cancelled() }}
-    needs: [test, lint, typecheck, dist, outdated]
+    needs: [test, lint, typecheck, dist, outdated, text]
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       actions: read # reads the logs of the other jobs of this run
       contents: read
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          disable-sudo-and-containers: true
+          disable-telemetry: true
+          allowed-endpoints: >-
+            *.actions.githubusercontent.com:443 *.blob.core.windows.net:443 api.github.com:443
+            github.com:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false

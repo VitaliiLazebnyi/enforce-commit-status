@@ -29380,269 +29380,14 @@ module.exports = {
 
 /***/ }),
 
-/***/ 2613:
-/***/ ((module) => {
+/***/ 6577:
+/***/ ((__unused_webpack_module, __webpack_exports__, __nccwpck_require__) => {
 
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("assert");
 
-/***/ }),
-
-/***/ 4434:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("events");
-
-/***/ }),
-
-/***/ 8611:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("http");
-
-/***/ }),
-
-/***/ 5692:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("https");
-
-/***/ }),
-
-/***/ 9278:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("net");
-
-/***/ }),
-
-/***/ 4589:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:assert");
-
-/***/ }),
-
-/***/ 6698:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:async_hooks");
-
-/***/ }),
-
-/***/ 4573:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:buffer");
-
-/***/ }),
-
-/***/ 7540:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:console");
-
-/***/ }),
-
-/***/ 7598:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:crypto");
-
-/***/ }),
-
-/***/ 3053:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:diagnostics_channel");
-
-/***/ }),
-
-/***/ 610:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:dns");
-
-/***/ }),
-
-/***/ 8474:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:events");
-
-/***/ }),
-
-/***/ 7067:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:http");
-
-/***/ }),
-
-/***/ 2467:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:http2");
-
-/***/ }),
-
-/***/ 7030:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:net");
-
-/***/ }),
-
-/***/ 643:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:perf_hooks");
-
-/***/ }),
-
-/***/ 1792:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:querystring");
-
-/***/ }),
-
-/***/ 7075:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:stream");
-
-/***/ }),
-
-/***/ 1692:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:tls");
-
-/***/ }),
-
-/***/ 3136:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:url");
-
-/***/ }),
-
-/***/ 7975:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:util");
-
-/***/ }),
-
-/***/ 3429:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:util/types");
-
-/***/ }),
-
-/***/ 5919:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:worker_threads");
-
-/***/ }),
-
-/***/ 8522:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:zlib");
-
-/***/ }),
-
-/***/ 3193:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("string_decoder");
-
-/***/ }),
-
-/***/ 4756:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("tls");
-
-/***/ }),
-
-/***/ 9023:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("util");
-
-/***/ })
-
-/******/ });
-/************************************************************************/
-/******/ // The module cache
-/******/ var __webpack_module_cache__ = {};
-/******/ 
-/******/ // The require function
-/******/ function __nccwpck_require__(moduleId) {
-/******/ 	// Check if module is in cache
-/******/ 	var cachedModule = __webpack_module_cache__[moduleId];
-/******/ 	if (cachedModule !== undefined) {
-/******/ 		return cachedModule.exports;
-/******/ 	}
-/******/ 	// Create a new module (and put it into the cache)
-/******/ 	var module = __webpack_module_cache__[moduleId] = {
-/******/ 		// no module.id needed
-/******/ 		// no module.loaded needed
-/******/ 		exports: {}
-/******/ 	};
-/******/ 
-/******/ 	// Execute the module function
-/******/ 	var threw = true;
-/******/ 	try {
-/******/ 		__webpack_modules__[moduleId].call(module.exports, module, module.exports, __nccwpck_require__);
-/******/ 		threw = false;
-/******/ 	} finally {
-/******/ 		if(threw) delete __webpack_module_cache__[moduleId];
-/******/ 	}
-/******/ 
-/******/ 	// Return the exports of the module
-/******/ 	return module.exports;
-/******/ }
-/******/ 
-/************************************************************************/
-/******/ /* webpack/runtime/asset-relocator-loader */
-/******/ if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = decodeURIComponent(new URL('.', import.meta.url).pathname).slice(import.meta.url.match(/^file:\/\/\/\w:/) ? 1 : 0, -1) + "/";
-/******/ 
-/******/ /* webpack/runtime/compat get default export */
-/******/ (() => {
-/******/ 	// getDefaultExport function for compatibility with non-harmony modules
-/******/ 	__nccwpck_require__.n = (module) => {
-/******/ 		var getter = module && module.__esModule ?
-/******/ 			() => (module['default']) :
-/******/ 			() => (module);
-/******/ 		__nccwpck_require__.d(getter, { a: getter });
-/******/ 		return getter;
-/******/ 	};
-/******/ })();
-/******/ 
-/******/ /* webpack/runtime/define property getters */
-/******/ (() => {
-/******/ 	// define getter functions for harmony exports
-/******/ 	__nccwpck_require__.d = (exports, definition) => {
-/******/ 		for(var key in definition) {
-/******/ 			if(__nccwpck_require__.o(definition, key) && !__nccwpck_require__.o(exports, key)) {
-/******/ 				Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
-/******/ 			}
-/******/ 		}
-/******/ 	};
-/******/ })();
-/******/ 
-/******/ /* webpack/runtime/hasOwnProperty shorthand */
-/******/ (() => {
-/******/ 	__nccwpck_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
-/******/ })();
-/******/ 
-/************************************************************************/
-var __webpack_exports__ = {};
+// EXPORTS
+__nccwpck_require__.d(__webpack_exports__, {
+  e: () => (/* binding */ run)
+});
 
 ;// CONCATENATED MODULE: external "os"
 const external_os_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("os");
@@ -37590,20 +37335,53 @@ function getOctokit(token, options, ...additionalPlugins) {
 // EXTERNAL MODULE: ./node_modules/ms/index.js
 var ms = __nccwpck_require__(744);
 var ms_default = /*#__PURE__*/__nccwpck_require__.n(ms);
-;// CONCATENATED MODULE: ./src/utils.ts
+;// CONCATENATED MODULE: ./src/utilities.ts
+/**
+ * @file The building blocks of the polling loop: duration parsing, API error classification and
+ * retry delays, annotated-tag resolution and the bounded sleep.
+ */
 
-// Node's setTimeout rejects delays above 2^31 - 1 ms (~24.8 days) and fires
-// after 1 ms instead, so durations must never exceed this bound.
+/*
+ * Node's setTimeout rejects delays above 2^31 - 1 ms (~24.8 days) and fires after 1 ms instead,
+ * so durations must never exceed this bound.
+ */
 const MAX_DURATION_MS = 2_147_483_647;
 // Safety cap for annotated tags pointing at other annotated tags.
 const MAX_TAG_DEPTH = 10;
-// The grammar `ms` parses (ms@2.1.3, `parse()`, there written `-?(?:\d+)?\.?\d+`, which is the same
-// language without the backtracking): an optionally negative decimal number, optional
-// spaces and an optional unit. `ms` returns undefined for any other string and for strings longer
-// than 100 characters, which its type definitions do not express; validating the input first makes
-// the call well-typed and keeps the error message uniform.
-const DURATION_PATTERN = /^-?(?:\d+(?:\.\d+)?|\.\d+) *(?:milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w|years?|yrs?|y)?$/i;
+const ONE_LEVEL = 1;
+/*
+ * The grammar `ms` parses (ms@2.1.3, `parse()`, there written `-?(?:\d+)?\.?\d+`, which is the
+ * same language without the backtracking): an optionally negative decimal number, optional spaces
+ * and an optional unit. `ms` returns undefined for any other string and for strings longer than
+ * 100 characters, which its type definitions do not express; validating the input first makes the
+ * call well-typed and keeps the error message uniform.
+ */
+const DURATION_UNITS = [
+    '[dhmswy]',
+    'days?',
+    'hours?',
+    'hrs?',
+    'milliseconds?',
+    'mins?',
+    'minutes?',
+    'ms',
+    'msecs?',
+    'secs?',
+    'seconds?',
+    'weeks?',
+    'years?',
+    'yrs?'
+];
+const DURATION_PATTERN = new RegExp(String.raw `^-?(?:\d+(?:\.\d+)?|\.\d+) *(?:${DURATION_UNITS.join('|')})?$`, 'iv');
 const MAX_DURATION_LENGTH = 100;
+const HTTP_FORBIDDEN = 403;
+const HTTP_NOT_FOUND = 404;
+const HTTP_TOO_MANY_REQUESTS = 429;
+const HTTP_SERVER_ERROR = 500;
+const MS_PER_SECOND = 1000;
+const NO_DELAY_MS = 0;
+// The value of `x-ratelimit-remaining` once the quota is used up.
+const QUOTA_EXHAUSTED = '0';
 /**
  * Checks that a string is a duration `ms` can parse.
  * @param value - The trimmed duration string.
@@ -37624,7 +37402,7 @@ function parseDuration(value) {
         throw new Error(`Invalid duration format: ${value}`);
     }
     const parsed = ms_default()(trimmed);
-    if (parsed <= 0) {
+    if (parsed <= NO_DELAY_MS) {
         throw new Error(`Duration must be positive: ${value}`);
     }
     return Math.min(parsed, MAX_DURATION_MS);
@@ -37675,10 +37453,10 @@ function parseNumber(value) {
  */
 function isRetryableApiError(error) {
     const status = getErrorStatus(error);
-    return (status === 429 ||
-        (status !== undefined && status >= 500) ||
-        (status === 403 &&
-            (getHeader(error, 'x-ratelimit-remaining') === '0' ||
+    return (status === HTTP_TOO_MANY_REQUESTS ||
+        (status !== undefined && status >= HTTP_SERVER_ERROR) ||
+        (status === HTTP_FORBIDDEN &&
+            (getHeader(error, 'x-ratelimit-remaining') === QUOTA_EXHAUSTED ||
                 getHeader(error, 'retry-after') !== undefined)));
 }
 /**
@@ -37692,45 +37470,59 @@ function isRetryableApiError(error) {
 function getRetryAfterMs(error) {
     const retryAfter = parseNumber(getHeader(error, 'retry-after'));
     if (retryAfter !== undefined) {
-        return retryAfter * 1000;
+        return retryAfter * MS_PER_SECOND;
     }
-    const reset = getHeader(error, 'x-ratelimit-remaining') === '0'
+    const reset = getHeader(error, 'x-ratelimit-remaining') === QUOTA_EXHAUSTED
         ? parseNumber(getHeader(error, 'x-ratelimit-reset'))
         : undefined;
-    return reset === undefined ? 0 : Math.max(reset * 1000 - Date.now(), 0);
+    return reset === undefined
+        ? NO_DELAY_MS
+        : Math.max(reset * MS_PER_SECOND - Date.now(), NO_DELAY_MS);
+}
+/**
+ * Fetches the object an annotated tag points to.
+ * @param octokit - The authenticated client (only `rest.git.getTag` is used).
+ * @param reference - The repository and the SHA of the object to look up.
+ * @returns The tag's target, or undefined when the SHA is not a tag object (HTTP 404: a commit).
+ * @rejects {Error} The API error of any other failed request.
+ */
+async function getTagTarget(octokit, reference) {
+    try {
+        const { data } = await octokit.rest.git.getTag({
+            owner: reference.owner,
+            repo: reference.repository,
+            tag_sha: reference.sha
+        });
+        return data.object;
+    }
+    catch (error) {
+        if (getErrorStatus(error) === HTTP_NOT_FOUND) {
+            return undefined;
+        }
+        throw error;
+    }
 }
 /**
  * Resolves a potential annotated tag to its underlying commit SHA
  * (ECS-REQ-020), peeling nested tag objects (tag -> tag -> commit).
  * @param octokit - The authenticated client (only `rest.git.getTag` is used).
- * @param owner - The repository owner.
- * @param repo - The repository name.
- * @param sha - A commit or annotated tag object SHA.
- * @returns The commit SHA.
- * @throws {Error} When the tag does not resolve to a commit within MAX_TAG_DEPTH levels.
+ * @param reference - The repository and the commit or annotated tag object SHA.
+ * @returns The SHA of the commit the reference resolves to.
+ * @rejects {Error} When the tag does not resolve to a commit within MAX_TAG_DEPTH levels.
  */
-async function resolveCommitSha(octokit, owner, repo, sha) {
+async function resolveCommitSha(octokit, reference) {
+    const { sha } = reference;
     let current = sha;
-    for (let depth = 0; depth < MAX_TAG_DEPTH; depth++) {
-        let object;
-        try {
-            const response = await octokit.rest.git.getTag({ owner, repo, tag_sha: current });
-            object = response.data.object;
+    for (let depth = 0; depth < MAX_TAG_DEPTH; depth += ONE_LEVEL) {
+        // Each level names the object of the next one.
+        const target = await getTagTarget(octokit, { ...reference, sha: current });
+        if (target === undefined || target.type === 'commit') {
+            return target?.sha ?? current;
         }
-        catch (error) {
-            // 404 means the SHA is not a tag object (a direct commit SHA).
-            if (getErrorStatus(error) === 404) {
-                return current;
-            }
-            throw error;
+        if (target.type !== 'tag') {
+            throw new Error(`Annotated tag ${sha} does not resolve to a commit (points to a '${target.type}' object).`);
         }
-        if (object.type === 'commit') {
-            return object.sha;
-        }
-        if (object.type !== 'tag') {
-            throw new Error(`Annotated tag ${sha} does not resolve to a commit (points to a '${object.type}' object).`);
-        }
-        current = object.sha;
+        current = target.sha;
     }
     throw new Error(`Annotated tag ${sha} exceeds the maximum nesting depth of ${String(MAX_TAG_DEPTH)}.`);
 }
@@ -37740,46 +37532,153 @@ async function resolveCommitSha(octokit, owner, repo, sha) {
  * @returns A promise that resolves after the delay.
  */
 async function sleep(milliseconds) {
-    const delay = Math.min(Math.max(milliseconds, 0), MAX_DURATION_MS);
-    await new Promise(resolve => {
-        setTimeout(resolve, delay);
-    });
+    const delay = Math.min(Math.max(milliseconds, NO_DELAY_MS), MAX_DURATION_MS);
+    // The promise settles with the delay it waited for.
+    const { promise, resolve } = Promise.withResolvers();
+    setTimeout(() => {
+        resolve(delay);
+    }, delay);
+    await promise;
 }
-const utils = {
-    parseDuration,
+const utilities = {
     getErrorStatus,
-    isRetryableApiError,
     getRetryAfterMs,
+    isRetryableApiError,
+    parseDuration,
     resolveCommitSha,
     sleep
 };
 
-;// CONCATENATED MODULE: ./src/action.ts
+;// CONCATENATED MODULE: ./src/requests.ts
+/**
+ * @file The API requests of a poll and their resilience (ECS-REQ-017, ECS-REQ-020, ECS-REQ-021).
+ */
+
+
+// The most runs one request returns; the most recent run of the commit is among them.
+const RUNS_PER_PAGE = 100;
+const requests_HTTP_NOT_FOUND = 404;
+/**
+ * Decides how a failed API request continues (API resilience, ECS-REQ-021): 5xx, 429 and
+ * rate-limit 403 responses are retried, honoring retry-after / x-ratelimit-reset.
+ * @param context - The poll context.
+ * @param error - The error of the request.
+ * @returns The delay before the request is retried.
+ * @throws {Error} The error itself when it is not retryable; a 404 names the workflow.
+ */
+function retryDelay(context, error) {
+    if (utilities.isRetryableApiError(error)) {
+        const status = String(utilities.getErrorStatus(error));
+        warning(`API error encountered (${status}). Retrying next interval.`);
+        return Math.max(context.inputs.pollIntervalMs, utilities.getRetryAfterMs(error));
+    }
+    // Tag-resolution 404s are consumed inside resolveCommitSha, so a 404
+    // here always means the workflow itself was not found.
+    if (utilities.getErrorStatus(error) === requests_HTTP_NOT_FOUND) {
+        const { inputs, owner, repository } = context;
+        throw new Error(`Workflow '${inputs.workflowId}' not found in ${owner}/${repository} (HTTP 404). ` +
+            "Check the workflow-id input and the token's actions:read permission.", { cause: error });
+    }
+    throw error;
+}
+/**
+ * Sends one API request; a retryable failure becomes the delay before the retry.
+ * @template T - The value of the request.
+ * @param context - The poll context.
+ * @param send - Sends the request.
+ * @returns The value, or the delay before the retry.
+ * @rejects {Error} The error of a request that is not retryable (see retryDelay).
+ */
+async function requests_request(context, send) {
+    try {
+        return { succeeded: true, value: await send() };
+    }
+    catch (error) {
+        return { delayMs: retryDelay(context, error), succeeded: false };
+    }
+}
+/**
+ * Resolves annotated tags to the commit (ECS-REQ-020).
+ * @param context - The poll context.
+ * @returns The commit SHA.
+ */
+async function resolveSha(context) {
+    const resolvedSha = await utilities.resolveCommitSha(context.client, {
+        owner: context.owner,
+        repository: context.repository,
+        sha: context.inputs.commitSha
+    });
+    info(`Resolved SHA for polling: ${resolvedSha}`);
+    return resolvedSha;
+}
+/**
+ * Lists the runs of the test workflow for the commit (ECS-REQ-017).
+ * @param context - The client, inputs and repository every poll shares.
+ * @param resolvedSha - The commit SHA (annotated tags already resolved).
+ * @returns The runs of the workflow for the commit, one entry per run.
+ */
+async function listRuns(context, resolvedSha) {
+    const { data } = await context.client.rest.actions.listWorkflowRuns({
+        head_sha: resolvedSha,
+        owner: context.owner,
+        per_page: RUNS_PER_PAGE,
+        repo: context.repository,
+        workflow_id: context.inputs.workflowId
+    });
+    return data.workflow_runs;
+}
+
+;// CONCATENATED MODULE: ./src/inputs.ts
+/**
+ * @file Reads and validates the action inputs (ECS-REQ-009..013, ECS-REQ-015).
+ */
 
 
 
 // ECS-REQ-012: strict minimum polling frequency.
 const MIN_POLL_INTERVAL_MS = 10_000;
+const DEFAULT_POLL_INTERVAL = '15s';
+const DEFAULT_TIMEOUT = '1h';
 // Full SHA-1 (40 hex chars) or SHA-256 (64 hex chars) object id.
-const COMMIT_SHA_PATTERN = /^[\da-f]{40}(?:[\da-f]{24})?$/i;
+const COMMIT_SHA_PATTERN = /^[\da-f]{40}(?:[\da-f]{24})?$/iv;
 /**
- * ECS-REQ-018: the list endpoint returns one entry per run, each already
- * reflecting only its latest attempt, so the most recent run is selected
- * (by created_at, tie-broken by id) rather than sorting by run_attempt.
- * @param runs - The (non-empty) runs of the workflow for the commit.
- * @returns The most recent run.
+ * Reads the token input (ECS-REQ-011) and masks it in the log.
+ * @returns The GitHub token the API requests authenticate with.
+ * @throws {Error} When the token is empty.
  */
-function selectMostRecentRun(runs) {
-    const createdAt = (run) => Date.parse(run.created_at) || 0;
-    const [first, ...rest] = runs;
-    let latest = first;
-    for (const candidate of rest) {
-        const order = createdAt(candidate) - createdAt(latest) || candidate.id - latest.id;
-        if (order > 0) {
-            latest = candidate;
-        }
+function readToken() {
+    const token = getInput('github-token');
+    if (token === '') {
+        throw new Error(`Input 'github-token' is required; pass \${{ github.token }} or a PAT with actions:read.`);
     }
-    return latest;
+    core_setSecret(token);
+    return token;
+}
+/**
+ * Reads the commit SHA input (ECS-REQ-010), defaulting to the SHA of the triggering event.
+ * @returns The lower-case SHA, the form the API reports (and filters `head_sha` by).
+ * @throws {Error} When the value is not a full commit SHA.
+ */
+function readCommitSha() {
+    const commitSha = (getInput('commit-sha') || github_context.sha).trim();
+    if (!COMMIT_SHA_PATTERN.test(commitSha)) {
+        throw new Error(`Input 'commit-sha' must be a full commit SHA (40 or 64 hex characters), got '${commitSha}'.`);
+    }
+    return commitSha.toLowerCase();
+}
+/**
+ * Reads the poll interval input (ECS-REQ-012), raising values below the minimum to it.
+ * @returns The poll interval in milliseconds.
+ * @throws {Error} When the value is not a positive duration.
+ */
+function readPollInterval() {
+    const pollIntervalRaw = getInput('poll-interval') || DEFAULT_POLL_INTERVAL;
+    const pollIntervalMs = utilities.parseDuration(pollIntervalRaw);
+    if (pollIntervalMs >= MIN_POLL_INTERVAL_MS) {
+        return pollIntervalMs;
+    }
+    warning(`poll-interval '${pollIntervalRaw}' is below the 10s minimum; using 10s.`);
+    return MIN_POLL_INTERVAL_MS;
 }
 /**
  * Reads and validates the action inputs (ECS-REQ-009..013, ECS-REQ-015).
@@ -37788,33 +37687,70 @@ function selectMostRecentRun(runs) {
  */
 function readInputs() {
     const workflowId = getInput('workflow-id', { required: true });
-    const token = getInput('github-token');
-    if (!token) {
-        throw new Error("Input 'github-token' is required; pass ${{ github.token }} or a PAT with actions:read.");
-    }
-    core_setSecret(token);
-    const commitSha = (getInput('commit-sha') || github_context.sha).trim();
-    if (!COMMIT_SHA_PATTERN.test(commitSha)) {
-        throw new Error(`Input 'commit-sha' must be a full commit SHA (40 or 64 hex characters), got '${commitSha}'.`);
-    }
-    const pollIntervalRaw = getInput('poll-interval') || '15s';
-    let pollIntervalMs = utils.parseDuration(pollIntervalRaw);
-    if (pollIntervalMs < MIN_POLL_INTERVAL_MS) {
-        warning(`poll-interval '${pollIntervalRaw}' is below the 10s minimum; using 10s.`);
-        pollIntervalMs = MIN_POLL_INTERVAL_MS;
-    }
-    const timeoutRaw = getInput('timeout') || '1h';
-    const timeoutMs = utils.parseDuration(timeoutRaw);
+    const token = readToken();
+    const commitSha = readCommitSha();
+    const pollIntervalMs = readPollInterval();
+    const timeoutRaw = getInput('timeout') || DEFAULT_TIMEOUT;
     return {
-        workflowId,
-        // The API reports (and filters `head_sha` by) lower-case object ids.
-        commitSha: commitSha.toLowerCase(),
-        token,
+        commitSha,
         pollIntervalMs,
+        timeoutMs: utilities.parseDuration(timeoutRaw),
         timeoutRaw,
-        timeoutMs
+        token,
+        workflowId
     };
 }
+
+;// CONCATENATED MODULE: ./src/runs.ts
+/**
+ * @file The workflow runs the action reads, and the selection of the most recent one
+ * (ECS-REQ-018).
+ */
+// The time of a run whose creation time cannot be parsed: older than any other run.
+const UNKNOWN_TIME_MS = 0;
+/**
+ * The creation time of a run.
+ * @param run - A workflow run.
+ * @returns Its creation time in epoch milliseconds, UNKNOWN_TIME_MS when it cannot be parsed.
+ */
+function createdAt(run) {
+    const time = Date.parse(run.created_at);
+    return Number.isNaN(time) ? UNKNOWN_TIME_MS : time;
+}
+/**
+ * Orders runs from the most recent to the oldest: by creation time, then by id.
+ * @param first - One run.
+ * @param second - The other run.
+ * @returns A negative number when the first run is more recent, a positive one when it is older.
+ */
+function byRecency(first, second) {
+    return createdAt(second) - createdAt(first) || second.id - first.id;
+}
+/**
+ * ECS-REQ-018: the list endpoint returns one entry per run, each already
+ * reflecting only its latest attempt, so the most recent run is selected
+ * (by created_at, tie-broken by id) rather than sorting by run_attempt.
+ * @param runs - The runs of the workflow for the commit.
+ * @returns The most recent run, or undefined when there is none.
+ */
+function selectMostRecentRun(runs) {
+    const [mostRecent] = runs.toSorted(byRecency);
+    return mostRecent;
+}
+
+;// CONCATENATED MODULE: ./src/action.ts
+/**
+ * @file The action: validates the inputs, polls the runs of the test workflow for the commit and
+ * reports the verdict of the most recent run (REQUIREMENTS.md).
+ */
+
+
+
+
+
+
+// Lets the strict '>' timeout check fire after a sleep capped at the boundary (ECS-REQ-016).
+const BOUNDARY_SLACK_MS = 1;
 /**
  * Formats a caught value as a failure message.
  * @param error - The caught value.
@@ -37827,121 +37763,503 @@ function errorMessage(error) {
         : 'An unexpected error occurred.';
 }
 /**
+ * Reports the verdict of a completed run (ECS-REQ-004..006).
+ * @param workflowRun - The completed run.
+ */
+function reportVerdict(workflowRun) {
+    setOutput('run-url', workflowRun.html_url);
+    if (workflowRun.conclusion === 'success') {
+        // ECS-REQ-004
+        setOutput('final-status', 'success');
+        info('Tests completed successfully.');
+        return;
+    }
+    // ECS-REQ-005, ECS-REQ-006: any non-success conclusion fails closed.
+    setOutput('final-status', 'failure');
+    setFailed(`Tests failed with conclusion: ${workflowRun.conclusion ?? 'unknown'}`);
+}
+/**
+ * Evaluates the runs of one poll (the evaluation matrix of REQUIREMENTS.md).
+ * @param context - The poll context.
+ * @param state - What the polls found, with the commit SHA.
+ * @param runs - The runs of the test workflow for the commit.
+ * @returns Whether the verdict is reported, or the delay before the next poll.
+ */
+function evaluate(context, state, runs) {
+    const { pollIntervalMs } = context.inputs;
+    const workflowRun = selectMostRecentRun(runs);
+    if (workflowRun === undefined) {
+        // ECS-REQ-008
+        info(`No workflow runs found for SHA ${state.resolvedSha}. Suspending and polling...`);
+        return { delayMs: pollIntervalMs, done: false, state };
+    }
+    if (workflowRun.status === 'completed') {
+        reportVerdict(workflowRun);
+        return { done: true };
+    }
+    // Pending state (ECS-REQ-007): any non-completed status waits.
+    info(`Tests currently in state: ${workflowRun.status ?? 'unknown'}. Suspending and polling...`);
+    return {
+        delayMs: pollIntervalMs,
+        done: false,
+        state: { ...state, lastRunUrl: workflowRun.html_url }
+    };
+}
+/**
+ * Polls once: resolves the commit (once), lists its runs and evaluates them.
+ * @param context - The client, inputs and repository every poll shares.
+ * @param state - What the previous polls found.
+ * @returns Whether the verdict is reported, or the delay before the next poll.
+ */
+async function pollOnce(context, state) {
+    const resolved = state.resolvedSha === undefined
+        ? await requests_request(context, async () => resolveSha(context))
+        : { succeeded: true, value: state.resolvedSha };
+    if (!resolved.succeeded) {
+        return { delayMs: resolved.delayMs, done: false, state };
+    }
+    const resolvedState = { ...state, resolvedSha: resolved.value };
+    const listed = await requests_request(context, async () => listRuns(context, resolvedState.resolvedSha));
+    return listed.succeeded
+        ? evaluate(context, resolvedState, listed.value)
+        : { delayMs: listed.delayMs, done: false, state: resolvedState };
+}
+/**
+ * Sleeps, but never meaningfully past the timeout boundary (ECS-REQ-016).
+ * @param context - The poll context.
+ * @param desiredMs - The requested delay.
+ * @returns A promise that resolves after the delay.
+ */
+async function boundedSleep(context, desiredMs) {
+    await utilities.sleep(Math.min(desiredMs, context.timeoutBoundary - Date.now() + BOUNDARY_SLACK_MS));
+}
+/**
+ * Reports the timeout (ECS-REQ-016).
+ * @param context - The poll context.
+ * @param state - What the polls found.
+ */
+function reportTimeout(context, state) {
+    setOutput('final-status', 'timeout');
+    if (state.lastRunUrl !== undefined) {
+        setOutput('run-url', state.lastRunUrl);
+    }
+    setFailed(`Timeout exceeded (${context.inputs.timeoutRaw}) while waiting for test resolution.`);
+}
+/**
+ * The polling loop: polls until the verdict is reported or the timeout expires.
+ * @param context - The client, inputs, repository and timeout boundary of the action run.
+ * @returns A promise that resolves once the verdict (or the timeout) is reported.
+ */
+async function pollUntilResolved(context) {
+    let state = { lastRunUrl: undefined, resolvedSha: undefined };
+    // Deterministic polling loop (ECS-REQ-019), bounded by the timeout (ECS-REQ-016).
+    while (Date.now() <= context.timeoutBoundary) {
+        const step = await pollOnce(context, state);
+        if (step.done) {
+            return;
+        }
+        ({ state } = step);
+        await boundedSleep(context, step.delayMs);
+    }
+    reportTimeout(context, state);
+}
+/**
  * Polls the workflow runs of the commit until the most recent one resolves or the timeout
  * expires, and reports the verdict.
  * @param inputs - The validated inputs.
+ * @param createClient - Creates the API client for the token.
  * @returns A promise that resolves once the verdict is reported.
  */
-async function poll(inputs) {
-    const { workflowId, commitSha, pollIntervalMs, timeoutRaw } = inputs;
+async function poll(inputs, createClient) {
     const timeoutBoundary = Date.now() + inputs.timeoutMs;
-    const octokit = getOctokit(inputs.token);
-    const { owner, repo } = github_context.repo;
-    // ECS-REQ-016: sleeps never run the wall clock meaningfully past the
-    // boundary (the +1 lets the strict '>' check fire after a capped sleep).
-    const boundedSleep = (desiredMs) => utils.sleep(Math.min(desiredMs, timeoutBoundary - Date.now() + 1));
-    let resolvedSha;
-    let lastRunUrl;
-    // Deterministic Polling Loop (ECS-REQ-019)
-    for (;;) {
-        // Check timeout boundary (ECS-REQ-016)
-        if (Date.now() > timeoutBoundary) {
-            setOutput('final-status', 'timeout');
-            if (lastRunUrl !== undefined) {
-                setOutput('run-url', lastRunUrl);
-            }
-            setFailed(`Timeout exceeded (${timeoutRaw}) while waiting for test resolution.`);
-            return;
-        }
-        let runs;
-        try {
-            // Resolve annotated tags once (ECS-REQ-020), inside the resilient
-            // wrapper so transient errors during resolution retry (ECS-REQ-021).
-            if (resolvedSha === undefined) {
-                resolvedSha = await utils.resolveCommitSha(octokit, owner, repo, commitSha);
-                info(`Resolved SHA for polling: ${resolvedSha}`);
-            }
-            // Query Workflow Runs (ECS-REQ-017)
-            const response = await octokit.rest.actions.listWorkflowRuns({
-                owner,
-                repo,
-                workflow_id: workflowId,
-                head_sha: resolvedSha,
-                per_page: 100
-            });
-            runs = response.data.workflow_runs;
-        }
-        catch (error) {
-            // API Resilience (ECS-REQ-021): retry 5xx, 429, and rate-limit 403s,
-            // honoring retry-after / x-ratelimit-reset when provided.
-            if (utils.isRetryableApiError(error)) {
-                const status = String(utils.getErrorStatus(error));
-                warning(`API error encountered (${status}). Retrying next interval.`);
-                await boundedSleep(Math.max(pollIntervalMs, utils.getRetryAfterMs(error)));
-                continue;
-            }
-            // Tag-resolution 404s are consumed inside resolveCommitSha, so a 404
-            // here always means the workflow itself was not found.
-            if (utils.getErrorStatus(error) === 404) {
-                throw new Error(`Workflow '${workflowId}' not found in ${owner}/${repo} (HTTP 404). ` +
-                    `Check the workflow-id input and the token's actions:read permission.`, { cause: error });
-            }
-            throw error;
-        }
-        // Check for 0 runs (ECS-REQ-008)
-        const [firstRun, ...otherRuns] = runs;
-        if (firstRun === undefined) {
-            info(`No workflow runs found for SHA ${resolvedSha}. Suspending and polling...`);
-            await boundedSleep(pollIntervalMs);
-            continue;
-        }
-        // Select the most recent run (ECS-REQ-018)
-        const targetRun = selectMostRecentRun([firstRun, ...otherRuns]);
-        lastRunUrl = targetRun.html_url;
-        // Evaluation Matrix
-        if (targetRun.status === 'completed') {
-            setOutput('run-url', targetRun.html_url);
-            if (targetRun.conclusion === 'success') {
-                // ECS-REQ-004
-                setOutput('final-status', 'success');
-                info('Tests completed successfully.');
-            }
-            else {
-                // ECS-REQ-005, ECS-REQ-006: any non-success conclusion fails closed.
-                setOutput('final-status', 'failure');
-                setFailed(`Tests failed with conclusion: ${targetRun.conclusion ?? 'unknown'}`);
-            }
-            return;
-        }
-        // Pending state (ECS-REQ-007): any non-completed status waits.
-        info(`Tests currently in state: ${targetRun.status ?? 'unknown'}. Suspending and polling...`);
-        await boundedSleep(pollIntervalMs);
-    }
+    const { owner, repo: repository } = github_context.repo;
+    const context = {
+        client: createClient(inputs.token),
+        inputs,
+        owner,
+        repository,
+        timeoutBoundary
+    };
+    await pollUntilResolved(context);
 }
 /**
  * Runs the action: validates the inputs, then gates on the test workflow of the commit.
  * Every failure is reported through `core.setFailed`; the returned promise never rejects.
+ * @param createClient - Creates the API client for the token: Octokit (`github.getOctokit`)
+ * unless a test passes a double.
  * @returns A promise that resolves once the verdict (or the error) is reported.
  */
-async function run() {
+async function run(createClient = getOctokit) {
     try {
-        await poll(readInputs());
+        await poll(readInputs(), createClient);
     }
     catch (error) {
         setOutput('final-status', 'error');
         setFailed(errorMessage(error));
         // The underlying API error of a wrapped failure, for step debug logging.
-        if (error instanceof Error && error.cause !== undefined) {
+        if (Error.isError(error) && error.cause !== undefined) {
             core_debug(`Caused by: ${errorMessage(error.cause)}`);
         }
     }
 }
 
-;// CONCATENATED MODULE: ./src/main.ts
 
-// GitHub Action entrypoint (ECS-REQ-001). run() reports every failure itself
-// via core.setFailed and never rejects, so it is invoked unconditionally.
-void run();
+/***/ }),
 
+/***/ 1730:
+/***/ ((module, __unused_webpack___webpack_exports__, __nccwpck_require__) => {
+
+__nccwpck_require__.a(module, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
+/* harmony import */ var _action_js__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(6577);
+/**
+ * @file GitHub Action entrypoint (ECS-REQ-001). `run()` reports every failure itself through
+ * `core.setFailed` and never rejects, so it is awaited unconditionally.
+ */
+
+await (0,_action_js__WEBPACK_IMPORTED_MODULE_0__/* .run */ .e)();
+
+__webpack_async_result__();
+} catch(e) { __webpack_async_result__(e); } }, 1);
+
+/***/ }),
+
+/***/ 2613:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("assert");
+
+/***/ }),
+
+/***/ 4434:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("events");
+
+/***/ }),
+
+/***/ 8611:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("http");
+
+/***/ }),
+
+/***/ 5692:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("https");
+
+/***/ }),
+
+/***/ 9278:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("net");
+
+/***/ }),
+
+/***/ 4589:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:assert");
+
+/***/ }),
+
+/***/ 6698:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:async_hooks");
+
+/***/ }),
+
+/***/ 4573:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:buffer");
+
+/***/ }),
+
+/***/ 7540:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:console");
+
+/***/ }),
+
+/***/ 7598:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:crypto");
+
+/***/ }),
+
+/***/ 3053:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:diagnostics_channel");
+
+/***/ }),
+
+/***/ 610:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:dns");
+
+/***/ }),
+
+/***/ 8474:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:events");
+
+/***/ }),
+
+/***/ 7067:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:http");
+
+/***/ }),
+
+/***/ 2467:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:http2");
+
+/***/ }),
+
+/***/ 7030:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:net");
+
+/***/ }),
+
+/***/ 643:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:perf_hooks");
+
+/***/ }),
+
+/***/ 1792:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:querystring");
+
+/***/ }),
+
+/***/ 7075:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:stream");
+
+/***/ }),
+
+/***/ 1692:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:tls");
+
+/***/ }),
+
+/***/ 3136:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:url");
+
+/***/ }),
+
+/***/ 7975:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:util");
+
+/***/ }),
+
+/***/ 3429:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:util/types");
+
+/***/ }),
+
+/***/ 5919:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:worker_threads");
+
+/***/ }),
+
+/***/ 8522:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:zlib");
+
+/***/ }),
+
+/***/ 3193:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("string_decoder");
+
+/***/ }),
+
+/***/ 4756:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("tls");
+
+/***/ }),
+
+/***/ 9023:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("util");
+
+/***/ })
+
+/******/ });
+/************************************************************************/
+/******/ // The module cache
+/******/ var __webpack_module_cache__ = {};
+/******/ 
+/******/ // The require function
+/******/ function __nccwpck_require__(moduleId) {
+/******/ 	// Check if module is in cache
+/******/ 	var cachedModule = __webpack_module_cache__[moduleId];
+/******/ 	if (cachedModule !== undefined) {
+/******/ 		return cachedModule.exports;
+/******/ 	}
+/******/ 	// Create a new module (and put it into the cache)
+/******/ 	var module = __webpack_module_cache__[moduleId] = {
+/******/ 		// no module.id needed
+/******/ 		// no module.loaded needed
+/******/ 		exports: {}
+/******/ 	};
+/******/ 
+/******/ 	// Execute the module function
+/******/ 	var threw = true;
+/******/ 	try {
+/******/ 		__webpack_modules__[moduleId].call(module.exports, module, module.exports, __nccwpck_require__);
+/******/ 		threw = false;
+/******/ 	} finally {
+/******/ 		if(threw) delete __webpack_module_cache__[moduleId];
+/******/ 	}
+/******/ 
+/******/ 	// Return the exports of the module
+/******/ 	return module.exports;
+/******/ }
+/******/ 
+/************************************************************************/
+/******/ /* webpack/runtime/asset-relocator-loader */
+/******/ if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = decodeURIComponent(new URL('.', import.meta.url).pathname).slice(import.meta.url.match(/^file:\/\/\/\w:/) ? 1 : 0, -1) + "/";
+/******/ 
+/******/ /* webpack/runtime/async module */
+/******/ (() => {
+/******/ 	var webpackQueues = typeof Symbol === "function" ? Symbol("webpack queues") : "__webpack_queues__";
+/******/ 	var webpackExports = typeof Symbol === "function" ? Symbol("webpack exports") : "__webpack_exports__";
+/******/ 	var webpackError = typeof Symbol === "function" ? Symbol("webpack error") : "__webpack_error__";
+/******/ 	var resolveQueue = (queue) => {
+/******/ 		if(queue && queue.d < 1) {
+/******/ 			queue.d = 1;
+/******/ 			queue.forEach((fn) => (fn.r--));
+/******/ 			queue.forEach((fn) => (fn.r-- ? fn.r++ : fn()));
+/******/ 		}
+/******/ 	}
+/******/ 	var wrapDeps = (deps) => (deps.map((dep) => {
+/******/ 		if(dep !== null && typeof dep === "object") {
+/******/ 			if(dep[webpackQueues]) return dep;
+/******/ 			if(dep.then) {
+/******/ 				var queue = [];
+/******/ 				queue.d = 0;
+/******/ 				dep.then((r) => {
+/******/ 					obj[webpackExports] = r;
+/******/ 					resolveQueue(queue);
+/******/ 				}, (e) => {
+/******/ 					obj[webpackError] = e;
+/******/ 					resolveQueue(queue);
+/******/ 				});
+/******/ 				var obj = {};
+/******/ 				obj[webpackQueues] = (fn) => (fn(queue));
+/******/ 				return obj;
+/******/ 			}
+/******/ 		}
+/******/ 		var ret = {};
+/******/ 		ret[webpackQueues] = x => {};
+/******/ 		ret[webpackExports] = dep;
+/******/ 		return ret;
+/******/ 	}));
+/******/ 	__nccwpck_require__.a = (module, body, hasAwait) => {
+/******/ 		var queue;
+/******/ 		hasAwait && ((queue = []).d = -1);
+/******/ 		var depQueues = new Set();
+/******/ 		var exports = module.exports;
+/******/ 		var currentDeps;
+/******/ 		var outerResolve;
+/******/ 		var reject;
+/******/ 		var promise = new Promise((resolve, rej) => {
+/******/ 			reject = rej;
+/******/ 			outerResolve = resolve;
+/******/ 		});
+/******/ 		promise[webpackExports] = exports;
+/******/ 		promise[webpackQueues] = (fn) => (queue && fn(queue), depQueues.forEach(fn), promise["catch"](x => {}));
+/******/ 		module.exports = promise;
+/******/ 		body((deps) => {
+/******/ 			currentDeps = wrapDeps(deps);
+/******/ 			var fn;
+/******/ 			var getResult = () => (currentDeps.map((d) => {
+/******/ 				if(d[webpackError]) throw d[webpackError];
+/******/ 				return d[webpackExports];
+/******/ 			}))
+/******/ 			var promise = new Promise((resolve) => {
+/******/ 				fn = () => (resolve(getResult));
+/******/ 				fn.r = 0;
+/******/ 				var fnQueue = (q) => (q !== queue && !depQueues.has(q) && (depQueues.add(q), q && !q.d && (fn.r++, q.push(fn))));
+/******/ 				currentDeps.map((dep) => (dep[webpackQueues](fnQueue)));
+/******/ 			});
+/******/ 			return fn.r ? promise : getResult();
+/******/ 		}, (err) => ((err ? reject(promise[webpackError] = err) : outerResolve(exports)), resolveQueue(queue)));
+/******/ 		queue && queue.d < 0 && (queue.d = 0);
+/******/ 	};
+/******/ })();
+/******/ 
+/******/ /* webpack/runtime/compat get default export */
+/******/ (() => {
+/******/ 	// getDefaultExport function for compatibility with non-harmony modules
+/******/ 	__nccwpck_require__.n = (module) => {
+/******/ 		var getter = module && module.__esModule ?
+/******/ 			() => (module['default']) :
+/******/ 			() => (module);
+/******/ 		__nccwpck_require__.d(getter, { a: getter });
+/******/ 		return getter;
+/******/ 	};
+/******/ })();
+/******/ 
+/******/ /* webpack/runtime/define property getters */
+/******/ (() => {
+/******/ 	// define getter functions for harmony exports
+/******/ 	__nccwpck_require__.d = (exports, definition) => {
+/******/ 		for(var key in definition) {
+/******/ 			if(__nccwpck_require__.o(definition, key) && !__nccwpck_require__.o(exports, key)) {
+/******/ 				Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 			}
+/******/ 		}
+/******/ 	};
+/******/ })();
+/******/ 
+/******/ /* webpack/runtime/hasOwnProperty shorthand */
+/******/ (() => {
+/******/ 	__nccwpck_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
+/******/ })();
+/******/ 
+/************************************************************************/
+/******/ 
+/******/ // startup
+/******/ // Load entry module and return exports
+/******/ // This entry module used 'module' so it can't be inlined
+/******/ var __webpack_exports__ = __nccwpck_require__(1730);
+/******/ __webpack_exports__ = await __webpack_exports__;
+/******/ 
 
 //# sourceMappingURL=index.js.map

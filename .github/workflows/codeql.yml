@@ -38,6 +38,9 @@ jobs:
           languages: ${{ matrix.language }}
           queries: ${{ matrix.suite }}
           build-mode: none
+          # Both suites of a language extract the same commit and would race to save the same TRAP cache
+          # key; the loser logs "Unable to reserve cache", which the warning gate rejects.
+          trap-caching: false
       - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: '/language:${{ matrix.language }}/suite:${{ matrix.suite }}'

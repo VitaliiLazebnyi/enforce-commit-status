@@ -34,6 +34,15 @@ jobs:
           # Publishing to the OpenSSF REST API (for the public badge) is off; the results land in
           # the repository's code-scanning dashboard through the SARIF upload below.
           publish_results: false
+      - name: Give repository-level findings a valid location
+        # Scorecard reports findings about the whole repository (Branch-Protection, Code-Review, Fuzzing,
+        # ...) under the placeholder URI "no file associated with this alert", which upload-sarif rejects
+        # with a warning. Point them at this workflow, the file that produces them.
+        run: |
+          jq '(.runs[].results[]?.locations[]?.physicalLocation.artifactLocation
+            | select(.uri == "no file associated with this alert")).uri = ".github/workflows/scorecard.yml"' \
+            results.sarif > results.located.sarif
+          mv results.located.sarif results.sarif
       - uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           sarif_file: results.sarif

@@ -1,5 +1,5 @@
 {
-  "$comment": "Inputs of script/outdated.ts. `holds` lists every dependency that is deliberately not at its newest release, with the reason; `npm run outdated` fails for any other outdated dependency and for a hold whose reason no longer applies. `tools` maps the version variables of the workflows to the GitHub repository whose newest release they must pin. Holds checked against the registries on 2026-10-28.",
+  "$comment": "Inputs of script/outdated.ts. `holds` lists every dependency that is deliberately not at its newest release, with the reason; `npm run outdated` fails for any other outdated dependency and for a hold whose reason no longer applies. `tools` maps the version variables of the workflows to the GitHub repository whose newest release they must pin. Holds checked against the registries on 2026-11-07.",
   "holds": {
     "node": {
       "allowedMajor": 24,

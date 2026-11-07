@@ -29,3 +29,4 @@ All notable changes to this project will be documented in this file.
 
 - Tests run on Vitest instead of Jest: Jest's ESM mode needs `--experimental-vm-modules` (an `ExperimentalWarning` on every run) and Jest 30 depends on `deepmerge`, which has an advisory (GHSA-gcqx-w48m-w2h4) without a fixed release.
 - Every dependency, GitHub Action and CI tool updated to its newest release (holds documented in `script/outdated.json`).
+- Dependencies refreshed on 2026-11-07: npm 12.2.2, ESLint 10.14.0, Vitest 5.1.0, knip 6.44.2, eslint-plugin-jsdoc 65.4.5, eslint-plugin-regexp 3.3.3, typos 1.52.0, `github/codeql-action` 4.39.3 and `zizmorcore/zizmor-action` 0.8.1. The development dependency `minimatch` is overridden to 11.0.5 to resolve GHSA-g3hv-75wg-m249 (no release of ESLint, typescript-eslint or Stryker allows minimatch 11 yet). The bundled runtime is unchanged.

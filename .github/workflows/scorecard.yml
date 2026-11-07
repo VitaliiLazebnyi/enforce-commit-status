@@ -25,7 +25,6 @@ jobs:
       contents: read
       security-events: write # upload the SARIF results to code scanning
     steps:
-      # The Scorecard action is a Docker container action, so containers stay enabled here.
       - name: Harden the runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
@@ -74,7 +73,6 @@ jobs:
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: block
-          disable-sudo-and-containers: true
           disable-telemetry: true
           allowed-endpoints: >-
             *.actions.githubusercontent.com:443 *.blob.core.windows.net:443 api.github.com:443

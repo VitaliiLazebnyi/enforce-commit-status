@@ -139,7 +139,7 @@ jobs:
       - run: script/check gitleaks
 
   warning-gate:
-    name: Warning gate
+    name: Warning gate (Security)
     if: ${{ !cancelled() }}
     needs: [npm-audit, scorecard, dependency-review, gitleaks]
     runs-on: ubuntu-26.04
@@ -162,5 +162,5 @@ jobs:
       - name: Fail on any warning or deprecation in the logs of this run
         env:
           GH_TOKEN: ${{ github.token }}
-          GATE_JOB_NAME: Warning gate
+          GATE_JOB_NAME: Warning gate (Security)
         run: script/warning_gate.sh

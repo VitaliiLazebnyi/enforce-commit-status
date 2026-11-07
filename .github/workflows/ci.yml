@@ -203,7 +203,7 @@ jobs:
       - run: script/check typos markdown yaml editorconfig
 
   warning-gate:
-    name: Warning gate
+    name: Warning gate (CI)
     if: ${{ !cancelled() }}
     needs: [test, lint, typecheck, dist, outdated, text]
     runs-on: ubuntu-26.04
@@ -226,5 +226,5 @@ jobs:
       - name: Fail on any warning or deprecation in the logs of this run
         env:
           GH_TOKEN: ${{ github.token }}
-          GATE_JOB_NAME: Warning gate
+          GATE_JOB_NAME: Warning gate (CI)
         run: script/warning_gate.sh

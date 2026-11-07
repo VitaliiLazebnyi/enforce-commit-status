@@ -50,6 +50,12 @@ jobs:
           # Both suites of a language extract the same commit and would race to save the same TRAP
           # cache key; the loser logs "Unable to reserve cache", which the warning gate rejects.
           trap-caching: false
+          # dist/ is the bundle ncc (webpack) generates from src/ and node_modules/: its alerts are
+          # in webpack's module wrappers and third-party code. src/ is analyzed, and CI proves dist/
+          # is a byte-identical rebuild of it.
+          config: |
+            paths-ignore:
+              - dist
       - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: /language:${{ matrix.language }}/suite:${{ matrix.suite }}

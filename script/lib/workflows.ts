@@ -38,8 +38,9 @@ type ActionPin = {
 };
 
 const NODE_PIN = /node-version: '?(?<version>\d+\.\d+\.\d+)'?/gv;
-const ACTION_PIN =
-  /uses: (?<repository>[^\s\/@]+\/[^\s\/@]+)(?<path>\/[^\s@]*)?@(?<reference>\S+)(?: # (?<comment>\S+))?/gv;
+const ACTION_PIN = /uses: (?<action>[^\s@]+)@(?<reference>\S+)(?: # (?<comment>\S+))?/gv;
+// The repository of an Action: the first two segments of its path.
+const ACTION_REPOSITORY = /^[^\/]+\/[^\/]+/v;
 const COMMIT_SHA = /^[\da-f]{40}$/v;
 
 /**
@@ -119,8 +120,9 @@ export async function checkActions(workflows: readonly Workflow[]): Promise<read
   const pins = workflows.flatMap(({ file, text }) => {
     const matches = matchesOf(text, ACTION_PIN);
     return matches.map((match): ActionPin => {
-      const { comment = '', path: actionPath = '', reference = '', repository = '' } = match;
-      return { action: `${repository}${actionPath}`, comment, file, reference, repository };
+      const { action = '', comment = '', reference = '' } = match;
+      const [repository = ''] = ACTION_REPOSITORY.exec(action) ?? [];
+      return { action, comment, file, reference, repository };
     });
   });
   const tags = await releaseTagsOf(pins.map(({ repository }) => repository));

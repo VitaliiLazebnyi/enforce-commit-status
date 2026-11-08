@@ -7,8 +7,9 @@ Thanks for your interest in improving `enforce-commit-status`!
 The repository develops on the exact Node.js release in `.node-version` (the newest Node.js 24,
 matching the action's `node24` runtime) and the npm release in the `packageManager` field of
 `package.json` (`npm@X.Y.Z+sha512.HEX`). `script/check_node.sh` verifies both;
-`script/setup_npm.sh` installs that npm release (verified against the SHA-512 of the field) and
-the locked dependencies, as CI does.
+`script/setup_npm.sh` unpacks that npm release (verified against the SHA-512 of the field), runs
+it to install the locked dependencies, as CI does, and prints the directory of its `npm` and `npx`
+to put first on your `PATH`.
 
 ```bash
 script/setup_npm.sh   # or: npm install --global npm@X.Y.Z && npm ci
